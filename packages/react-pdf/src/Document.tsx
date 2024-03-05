@@ -392,6 +392,7 @@ const Document = forwardRef(function Document(
 
     // File is PDFDataRangeTransport
     if (file instanceof PDFDataRangeTransport) {
+      // @ts-ignore
       return { range: file };
     }
 
@@ -533,10 +534,10 @@ const Document = forwardRef(function Document(
     const loadingTask = destroyable;
 
     loadingTask.promise
-      .then((nextPdf) => {
+      .then((nextPdf: any) => {
         pdfDispatch({ type: 'RESOLVE', value: nextPdf });
       })
-      .catch((error) => {
+      .catch((error: any) => {
         if (loadingTask.destroyed) {
           return;
         }
@@ -651,6 +652,7 @@ Document.propTypes = {
   error: isFunctionOrNode,
   externalLinkRel: PropTypes.string,
   externalLinkTarget: PropTypes.oneOf(['_self', '_blank', '_parent', '_top'] as const),
+  //@ts-ignore
   file: isFile,
   imageResourcesPath: PropTypes.string,
   inputRef: isRef,
