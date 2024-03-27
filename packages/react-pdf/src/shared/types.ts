@@ -14,6 +14,7 @@ import type {
 } from 'pdfjs-dist/types/src/display/api.js';
 import type { AnnotationLayerParameters } from 'pdfjs-dist/types/src/display/annotation_layer.js';
 import type LinkService from '../LinkService.js';
+import type React from 'react';
 
 type NullableObject<T extends object> = { [P in keyof T]: T[P] | null };
 
@@ -110,7 +111,7 @@ export type OnPasswordCallback = (password: string | null) => void;
 
 export type OnRenderAnnotationLayerError = (error: unknown) => void;
 
-export type OnRenderAnnotationLayerSuccess = () => void;
+export type OnRenderAnnotationLayerSuccess = (annotationLayer: true) => void;
 
 export type OnRenderError = OnError;
 
@@ -126,6 +127,8 @@ export type Options = NullableObject<Omit<DocumentInitParameters, KeyOfUnion<Sou
 
 /* Context types */
 export type DocumentContextType = {
+  annotationEditorUiManager: any;
+  annotationEditorMode: any;
   imageResourcesPath?: ImageResourcesPath;
   linkService: LinkService;
   onItemClick?: (args: OnItemClickArgs) => void;
@@ -138,9 +141,11 @@ export type DocumentContextType = {
 
 export type PageContextType = {
   _className?: string;
+  annotationLayer: React.Ref<HTMLDivElement>;
   canvasBackground?: string;
   customTextRenderer?: CustomTextRenderer;
   devicePixelRatio?: number;
+  drawLayer: any;
   onGetAnnotationsError?: OnGetAnnotationsError;
   onGetAnnotationsSuccess?: OnGetAnnotationsSuccess;
   onGetStructTreeError?: OnGetStructTreeError;
@@ -160,6 +165,7 @@ export type PageContextType = {
   renderTextLayer: boolean;
   rotate: number;
   scale: number;
+  textLayerRef: React.Ref<HTMLDivElement>;
 } | null;
 
 export type OutlineContextType = {
@@ -170,3 +176,10 @@ export type StructTreeNodeWithExtraAttributes = StructTreeNode & {
   alt?: string;
   lang?: string;
 };
+
+export type HighlightEditorColorType = {
+  name: string;
+  hex: string;
+};
+
+export type HighlightEditorColorsType = HighlightEditorColorType[];

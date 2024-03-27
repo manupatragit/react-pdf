@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import makeCancellable from 'make-cancellable-promise';
 import makeEventProps from 'make-event-props';
@@ -56,6 +56,8 @@ import type {
   PageCallback,
   RenderMode,
 } from './shared/types.js';
+import pdfjs from './pdfjs.js';
+import AnnotationEditorLayer from './Page/AnnotationEditorLayer.js';
 
 const defaultScale = 1;
 
@@ -321,6 +323,8 @@ const Page: React.FC<PageProps> = function Page(props) {
   const {
     _className = 'react-pdf__Page',
     _enableRegisterUnregisterPage = true,
+    annotationEditorUiManager,
+    annotationEditorMode,
     canvasBackground,
     canvasRef,
     children,
@@ -365,6 +369,9 @@ const Page: React.FC<PageProps> = function Page(props) {
   const [pageState, pageDispatch] = useResolver<PDFPageProxy>();
   const { value: page, error: pageError } = pageState;
   const pageElement = useRef<HTMLDivElement>(null);
+  const [annotationLayer, setAnnotationLayer] = useState(null);
+  const textLayerRef = useRef<HTMLDivElement>(null);
+  const annotationLayerRendered = Boolean(annotationLayer);
 
   invariant(
     pdf,
@@ -401,6 +408,19 @@ const Page: React.FC<PageProps> = function Page(props) {
     return scaleWithDefault * pageScale;
   }, [height, page, rotate, scaleProps, width]);
 
+  const drawLayer = useMemo(() => {
+    return new pdfjs.DrawLayer({ pageIndex: pageIndex });
+  }, [pageIndex]);
+
+  useEffect(
+    function setDrawLayerParent() {
+      if (drawLayer) {
+        drawLayer.setParent(pageElement.current);
+      }
+    },
+    [drawLayer],
+  );
+
   function hook() {
     return () => {
       if (!isProvided(pageIndex)) {
@@ -415,6 +435,15 @@ const Page: React.FC<PageProps> = function Page(props) {
   }
 
   useEffect(hook, [_enableRegisterUnregisterPage, pdf, pageIndex, unregisterPage]);
+
+  useEffect(
+    function updateAnnotationEditorUiManagerPage() {
+      if (annotationEditorUiManager) {
+        annotationEditorUiManager.onPageChanging({ pageNumber });
+      }
+    },
+    [annotationEditorUiManager, pageNumber],
+  );
 
   /**
    * Called when a page is loaded successfully
@@ -500,15 +529,22 @@ const Page: React.FC<PageProps> = function Page(props) {
     [page, scale],
   );
 
+  const onRenderAnnotationLayerSuccess = (annotationLayer: any) => {
+    setAnnotationLayer(annotationLayer);
+    onRenderAnnotationLayerSuccessProps?.(annotationLayer);
+  };
+
   const childContext = useMemo(
     () =>
       // Technically there cannot be page without pageIndex, pageNumber, rotate and scale, but TypeScript doesn't know that
       page && isProvided(pageIndex) && pageNumber && isProvided(rotate) && isProvided(scale)
         ? {
             _className,
+            annotationLayer,
             canvasBackground,
             customTextRenderer,
             devicePixelRatio,
+            drawLayer,
             onGetAnnotationsError: onGetAnnotationsErrorProps,
             onGetAnnotationsSuccess: onGetAnnotationsSuccessProps,
             onGetStructTreeError: onGetStructTreeErrorProps,
@@ -516,7 +552,7 @@ const Page: React.FC<PageProps> = function Page(props) {
             onGetTextError: onGetTextErrorProps,
             onGetTextSuccess: onGetTextSuccessProps,
             onRenderAnnotationLayerError: onRenderAnnotationLayerErrorProps,
-            onRenderAnnotationLayerSuccess: onRenderAnnotationLayerSuccessProps,
+            onRenderAnnotationLayerSuccess,
             onRenderError: onRenderErrorProps,
             onRenderSuccess: onRenderSuccessProps,
             onRenderTextLayerError: onRenderTextLayerErrorProps,
@@ -528,10 +564,12 @@ const Page: React.FC<PageProps> = function Page(props) {
             renderTextLayer: renderTextLayerProps,
             rotate,
             scale,
+            textLayerRef,
           }
         : null,
     [
       _className,
+      annotationLayer,
       canvasBackground,
       customTextRenderer,
       devicePixelRatio,
@@ -609,12 +647,33 @@ const Page: React.FC<PageProps> = function Page(props) {
     return <AnnotationLayer key={`${pageKey}_annotations`} />;
   }
 
+  function isValidAnnotationEditorMode(mode: number) {
+    return (
+      Object.values(pdfjs.AnnotationEditorType).includes(mode) &&
+      mode !== pdfjs.AnnotationEditorType.DISABLE
+    );
+  }
+
+  function renderAnnotationEditorLayer() {
+    const mode = annotationEditorMode;
+    if (!isValidAnnotationEditorMode(mode)) {
+      return null;
+    }
+
+    if (!annotationLayerRendered) {
+      return null;
+    }
+
+    return <AnnotationEditorLayer />;
+  }
+
   function renderChildren() {
     return (
       <PageContext.Provider value={childContext}>
         {renderMainLayer()}
         {renderTextLayer()}
         {renderAnnotationLayer()}
+        {renderAnnotationEditorLayer()}
         {children}
       </PageContext.Provider>
     );

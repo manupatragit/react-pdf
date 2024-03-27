@@ -37,6 +37,8 @@ import {
 
 import useResolver from './shared/hooks/useResolver.js';
 import { eventProps, isClassName, isFile, isRef } from './shared/propTypes.js';
+//@ts-ignore
+import { EventBus } from './shared/eventBus.js';
 
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { EventProps } from 'make-event-props';
@@ -46,6 +48,7 @@ import type {
   ExternalLinkRel,
   ExternalLinkTarget,
   File,
+  HighlightEditorColorsType,
   ImageResourcesPath,
   NodeOrRenderer,
   OnDocumentLoadError,
@@ -72,6 +75,7 @@ type OnSourceError = OnError;
 type OnSourceSuccess = () => void;
 
 export type DocumentProps = {
+  annotationEditorMode: number;
   children?: React.ReactNode;
   /**
    * Class name(s) that will be added to rendered element along with the default `react-pdf__Document`.
@@ -111,6 +115,12 @@ export type DocumentProps = {
    * @example { url: 'https://example.com/sample.pdf' }
    */
   file?: File;
+  /**
+   * List of colors to be used with highlight editor
+   *
+   * @example [{ name: 'blue', hex: '#324ea8' }, { name: 'red', hex: '#a83242' }]
+   */
+  highlightEditorColors?: HighlightEditorColorsType;
   /**
    * The path used to prefix the src attributes of annotation SVGs.
    *
@@ -242,17 +252,31 @@ function isParameterObject(file: File): file is Source {
   );
 }
 
+const getHighlightColorsString = (highlightEditorColors?: HighlightEditorColorsType) => {
+  const colorsString = highlightEditorColors
+    ? highlightEditorColors
+        .map(({ name, hex }) => {
+          return name + '=' + hex;
+        })
+        .join(',')
+    : 'yellow=#FFFF98,green=#53FFBC,blue=#80EBFF,pink=#FFCBE6,red=#FF4F5F';
+
+  return colorsString;
+};
+
 /**
  * Loads a document passed using `file` prop.
  */
 const Document = forwardRef(function Document(
   {
+    annotationEditorMode = pdfjs.AnnotationEditorType.DISABLE,
     children,
     className,
     error = 'Failed to load PDF file.',
     externalLinkRel,
     externalLinkTarget,
     file,
+    highlightEditorColors,
     inputRef,
     imageResourcesPath,
     loading = 'Loading PDF…',
@@ -275,6 +299,12 @@ const Document = forwardRef(function Document(
   const { value: source, error: sourceError } = sourceState;
   const [pdfState, pdfDispatch] = useResolver<PDFDocumentProxy>();
   const { value: pdf, error: pdfError } = pdfState;
+  const [annotationEditorUiManagerState, annotationEditorUiManagerDispatch] = useResolver<any>();
+  const { value: annotationEditorUiManager, error: annotationEditorUiManagerError } =
+    annotationEditorUiManagerState;
+  const eventBus = useRef(new EventBus());
+  const defaultInputRef = useRef<HTMLDivElement>(null);
+  const mainContainerRef = inputRef || defaultInputRef;
 
   const linkService = useRef(new LinkService());
 
@@ -473,6 +503,25 @@ const Document = forwardRef(function Document(
     [source],
   );
 
+  function createAnnotationEditorUiManager() {
+    const colorPickerOptions = getHighlightColorsString(highlightEditorColors);
+    const uiManager = new pdfjs.AnnotationEditorUIManager(
+      (mainContainerRef as any).current,
+      (mainContainerRef as any).current,
+      null,
+      eventBus.current,
+      pdf,
+      false,
+      colorPickerOptions,
+    );
+
+    eventBus.current._on('switchannotationeditorparams', ({ type, value }: any) => {
+      uiManager.updateParams(type, value);
+    });
+
+    annotationEditorUiManagerDispatch({ type: 'RESOLVE', value: uiManager });
+  }
+
   /**
    * Called when a document is read successfully
    */
@@ -488,6 +537,7 @@ const Document = forwardRef(function Document(
 
     pages.current = new Array(pdf.numPages);
     linkService.current.setDocument(pdf);
+    createAnnotationEditorUiManager();
   }
 
   /**
@@ -593,6 +643,8 @@ const Document = forwardRef(function Document(
 
   const childContext = useMemo(
     () => ({
+      annotationEditorUiManager,
+      annotationEditorMode,
       imageResourcesPath,
       linkService: linkService.current,
       onItemClick,
@@ -602,7 +654,15 @@ const Document = forwardRef(function Document(
       rotate,
       unregisterPage,
     }),
-    [imageResourcesPath, onItemClick, pdf, renderMode, rotate],
+    [
+      annotationEditorUiManager,
+      annotationEditorMode,
+      imageResourcesPath,
+      onItemClick,
+      pdf,
+      renderMode,
+      rotate,
+    ],
   );
 
   const eventProps = useMemo(() => makeEventProps(otherProps, () => pdf), [otherProps, pdf]);
@@ -632,7 +692,7 @@ const Document = forwardRef(function Document(
   return (
     <div
       className={clsx('react-pdf__Document', className)}
-      ref={inputRef}
+      ref={mainContainerRef}
       style={{
         ['--scale-factor' as string]: '1',
       }}

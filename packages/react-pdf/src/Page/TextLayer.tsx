@@ -33,13 +33,13 @@ export default function TextLayer() {
     pageNumber,
     rotate,
     scale,
+    textLayerRef: layerElement,
   } = pageContext;
 
   invariant(page, 'Attempted to load page text content, but no page was specified.');
 
   const [textContentState, textContentDispatch] = useResolver<TextContent>();
   const { value: textContent, error: textContentError } = textContentState;
-  const layerElement = useRef<HTMLDivElement>(null);
   const endElement = useRef<HTMLElement>();
 
   warning(
@@ -178,7 +178,7 @@ export default function TextLayer() {
       return;
     }
 
-    const { current: layer } = layerElement;
+    const { current: layer } = layerElement as any;
 
     if (!layer) {
       return;
