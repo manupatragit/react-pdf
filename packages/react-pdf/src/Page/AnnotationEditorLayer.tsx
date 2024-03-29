@@ -1,9 +1,10 @@
 import invariant from 'tiny-invariant';
-import { useDocumentContext, usePageContext } from '../index.test.js';
 import pdfjs from '../pdfjs.js';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { DummyL10n } from '../shared/dummyL10n.js';
 import clsx from 'clsx';
+import useDocumentContext from '../shared/hooks/useDocumentContext.js';
+import usePageContext from '../shared/hooks/usePageContext.js';
 
 export default function AnnotationEditorLayer() {
   const annotationEditorLayerRef = useRef<any>(null);
