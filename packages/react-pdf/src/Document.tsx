@@ -63,6 +63,7 @@ import type {
   ScrollPageIntoViewArgs,
   Source,
 } from './shared/types.js';
+import Page, { type PageProps } from './Page.js';
 
 const { PDFDataRangeTransport } = pdfjs;
 
@@ -224,6 +225,12 @@ export type DocumentProps = {
    * @example 90
    */
   rotate?: number | null;
+  /**
+   * Page width. If neither `height` nor `width` are defined, page will be rendered at the size defined in PDF. If you define `width` and `height` at the same time, `height` will be ignored. If you define `width` and `scale` at the same time, the width will be multiplied by a given factor.
+   *
+   * @example 300
+   */
+  width?: number;
 } & EventProps<DocumentCallback | false | undefined>;
 
 const defaultOnPassword: OnPassword = (callback, reason) => {
@@ -291,6 +298,7 @@ const Document = forwardRef(function Document(
     options,
     renderMode,
     rotate,
+    width,
     ...otherProps
   }: DocumentProps,
   ref,
@@ -668,7 +676,24 @@ const Document = forwardRef(function Document(
   const eventProps = useMemo(() => makeEventProps(otherProps, () => pdf), [otherProps, pdf]);
 
   function renderChildren() {
-    return <DocumentContext.Provider value={childContext}>{children}</DocumentContext.Provider>;
+    const pagesList = new Array(pages.current.length).fill(0);
+
+    return (
+      <DocumentContext.Provider value={childContext}>
+        {pagesList.map((_, pageIndex) => {
+          const pageNumber = pageIndex + 1;
+          const pageProps: PageProps = {
+            pageNumber,
+          };
+
+          if (width) {
+            pageProps.width = width;
+          }
+
+          return <Page key={pageNumber} {...pageProps} />;
+        })}
+      </DocumentContext.Provider>
+    );
   }
 
   function renderContent() {
