@@ -3,7 +3,7 @@ import type {
   PDFDocumentProxy,
   PDFPageProxy,
   PasswordResponses,
-} from 'pdfjs-dist';
+} from '@commutatus/pdfjs-dist';
 import type {
   BinaryData,
   DocumentInitParameters,
@@ -11,8 +11,8 @@ import type {
   StructTreeNode,
   TextContent,
   TextItem,
-} from 'pdfjs-dist/types/src/display/api.js';
-import type { AnnotationLayerParameters } from 'pdfjs-dist/types/src/display/annotation_layer.js';
+} from '@commutatus/pdfjs-dist/types/src/display/api.js';
+import type { AnnotationLayerParameters } from '@commutatus/pdfjs-dist/types/src/display/annotation_layer.js';
 import type LinkService from '../LinkService.js';
 import type React from 'react';
 

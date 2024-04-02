@@ -1,7 +1,7 @@
 import invariant from 'tiny-invariant';
 import warning from 'warning';
 
-import type { PDFPageProxy } from 'pdfjs-dist';
+import type { PDFPageProxy } from '@commutatus/pdfjs-dist';
 import type { PageCallback } from './types.js';
 
 /**

@@ -18,7 +18,7 @@ import useDocumentContext from './shared/hooks/useDocumentContext.js';
 import useResolver from './shared/hooks/useResolver.js';
 import { eventProps, isClassName, isPdf, isRef } from './shared/propTypes.js';
 
-import type { PDFDocumentProxy } from 'pdfjs-dist';
+import type { PDFDocumentProxy } from '@commutatus/pdfjs-dist';
 import type { EventProps } from 'make-event-props';
 import type { ClassName, OnItemClickArgs } from './shared/types.js';
 

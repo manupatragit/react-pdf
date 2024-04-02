@@ -14,7 +14,7 @@
  */
 import invariant from 'tiny-invariant';
 
-import type { PDFDocumentProxy } from 'pdfjs-dist';
+import type { PDFDocumentProxy } from '@commutatus/pdfjs-dist';
 import type {
   Dest,
   ResolvedDest,
@@ -23,7 +23,7 @@ import type {
   ScrollPageIntoViewArgs,
 } from './shared/types.js';
 
-import type { IPDFLinkService } from 'pdfjs-dist/types/web/interfaces.js';
+import type { IPDFLinkService } from '@commutatus/pdfjs-dist/types/web/interfaces.js';
 
 const DEFAULT_LINK_REL = 'noopener noreferrer nofollow';
 

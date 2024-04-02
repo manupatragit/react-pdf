@@ -6,7 +6,7 @@ import {
   isStructTreeNodeWithOnlyContentChild,
 } from './shared/structTreeUtils.js';
 
-import type { StructTreeContent } from 'pdfjs-dist/types/src/display/api.js';
+import type { StructTreeContent } from '@commutatus/pdfjs-dist/types/src/display/api.js';
 import type { StructTreeNodeWithExtraAttributes } from './shared/types.js';
 
 type StructTreeItemProps = {

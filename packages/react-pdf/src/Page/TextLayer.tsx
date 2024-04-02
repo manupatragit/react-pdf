@@ -11,7 +11,11 @@ import usePageContext from '../shared/hooks/usePageContext.js';
 import useResolver from '../shared/hooks/useResolver.js';
 import { cancelRunningTask } from '../shared/utils.js';
 
-import type { TextContent, TextItem, TextMarkedContent } from 'pdfjs-dist/types/src/display/api.js';
+import type {
+  TextContent,
+  TextItem,
+  TextMarkedContent,
+} from '@commutatus/pdfjs-dist/types/src/display/api.js';
 
 function isTextItem(item: TextItem | TextMarkedContent): item is TextItem {
   return 'str' in item;

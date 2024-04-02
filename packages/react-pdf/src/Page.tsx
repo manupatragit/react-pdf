@@ -32,7 +32,7 @@ import {
   isRotate,
 } from './shared/propTypes.js';
 
-import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
+import type { PDFDocumentProxy, PDFPageProxy } from '@commutatus/pdfjs-dist';
 import type { EventProps } from 'make-event-props';
 import type {
   ClassName,

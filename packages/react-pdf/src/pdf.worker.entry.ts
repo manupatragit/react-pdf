@@ -8,4 +8,4 @@
 (
   (typeof window !== 'undefined' ? window : {}) as Window &
     typeof globalThis & { pdfjsWorker: unknown }
-).pdfjsWorker = require('pdfjs-dist/build/pdf.worker');
+).pdfjsWorker = require('@commutatus/pdfjs-dist/build/pdf.worker');

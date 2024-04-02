@@ -40,7 +40,7 @@ import { eventProps, isClassName, isFile, isRef } from './shared/propTypes.js';
 //@ts-ignore
 import { EventBus } from './shared/eventBus.js';
 
-import type { PDFDocumentProxy } from 'pdfjs-dist';
+import type { PDFDocumentProxy } from '@commutatus/pdfjs-dist';
 import type { EventProps } from 'make-event-props';
 import type {
   ClassName,
