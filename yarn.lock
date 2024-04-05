@@ -292,9 +292,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@commutatus/pdfjs-dist@npm:^5.0.0":
-  version: 5.0.0
-  resolution: "@commutatus/pdfjs-dist@npm:5.0.0"
+"@commutatus/pdfjs-dist@npm:^5.0.2":
+  version: 5.0.2
+  resolution: "@commutatus/pdfjs-dist@npm:5.0.2"
   dependencies:
     canvas: "npm:^2.11.2"
     path2d-polyfill: "npm:^2.0.1"
@@ -303,7 +303,7 @@ __metadata:
       optional: true
     path2d-polyfill:
       optional: true
-  checksum: 10c0/d735cb5b0052c1d6a2679df581241c58f99c661a5a66e05863fa5623894489882c09c1a7744a794289f2d0abcef96de393796f4fc65872bf81fa87b1449a3fc4
+  checksum: 10c0/12db84a81e9491c1f640aef0a0426d0a4118eaa0a615a14fbf05800ed1ab706a0ccc153c9554d52e9180a5bd5b901d6071559ea72658c9cfa7c46cee59c42329
   languageName: node
   linkType: hard
 
@@ -311,7 +311,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@commutatus/react-pdf@workspace:packages/react-pdf"
   dependencies:
-    "@commutatus/pdfjs-dist": "npm:^5.0.0"
+    "@commutatus/pdfjs-dist": "npm:^5.0.2"
     "@testing-library/dom": "npm:^9.0.0"
     "@testing-library/jest-dom": "npm:^6.0.0"
     "@testing-library/react": "npm:^14.0.0"

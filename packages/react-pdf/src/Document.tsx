@@ -122,6 +122,7 @@ export type DocumentProps = {
    * @example [{ name: 'blue', hex: '#324ea8' }, { name: 'red', hex: '#a83242' }]
    */
   highlightEditorColors?: HighlightEditorColorsType;
+  defaultHighlightColor?: string;
   /**
    * The path used to prefix the src attributes of annotation SVGs.
    *
@@ -284,6 +285,7 @@ const Document = forwardRef(function Document(
     externalLinkTarget,
     file,
     highlightEditorColors,
+    defaultHighlightColor,
     inputRef,
     imageResourcesPath,
     loading = 'Loading PDF…',
@@ -510,6 +512,15 @@ const Document = forwardRef(function Document(
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [source],
   );
+
+  useEffect(() => {
+    if (defaultHighlightColor && annotationEditorUiManager) {
+      annotationEditorUiManager.updateParams(
+        pdfjs.AnnotationEditorParamsType.HIGHLIGHT_DEFAULT_COLOR,
+        defaultHighlightColor,
+      );
+    }
+  }, [defaultHighlightColor, annotationEditorUiManager]);
 
   function createAnnotationEditorUiManager() {
     const colorPickerOptions = getHighlightColorsString(highlightEditorColors);

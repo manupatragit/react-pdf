@@ -160,7 +160,15 @@
   }
 }
 
-.annotationEditorLayer :is(.freeTextEditor, .inkEditor, .stampEditor, .highlightEditor) {
+.annotationEditorLayer
+  :is(
+    .freeTextEditor,
+    .inkEditor,
+    .stampEditor,
+    .highlightEditor,
+    .underlineEditor,
+    .strikeoutEditor
+  ) {
   .editToolbar {
     --editor-toolbar-delete-image: svg-load(../images/editor-toolbar-delete.svg);
     --editor-toolbar-bg-color: #f0f0f4;
@@ -923,30 +931,40 @@
 
 .annotationEditorLayer {
   &[data-main-rotation='0'] {
-    .highlightEditor > .editToolbar {
+    .highlightEditor > .editToolbar,
+    .underlineEditor > .editToolbar,
+    .strikeoutEditor > .editToolbar {
       rotate: 0deg;
     }
   }
 
   &[data-main-rotation='90'] {
-    .highlightEditor > .editToolbar {
+    .highlightEditor > .editToolbar,
+    .underlineEditor > .editToolbar,
+    .strikeoutEditor > .editToolbar {
       rotate: 270deg;
     }
   }
 
   &[data-main-rotation='180'] {
-    .highlightEditor > .editToolbar {
+    .highlightEditor > .editToolbar,
+    .underlineEditor > .editToolbar,
+    .strikeoutEditor > .editToolbar {
       rotate: 180deg;
     }
   }
 
   &[data-main-rotation='270'] {
-    .highlightEditor > .editToolbar {
+    .highlightEditor > .editToolbar,
+    .underlineEditor > .editToolbar,
+    .strikeoutEditor > .editToolbar {
       rotate: 90deg;
     }
   }
 
-  .highlightEditor {
+  .highlightEditor,
+  .underlineEditor,
+  .strikeoutEditor {
     position: absolute;
     background: transparent;
     z-index: 1;
