@@ -15,6 +15,7 @@ import type {
 import type { AnnotationLayerParameters } from '@commutatus/pdfjs-dist/types/src/display/annotation_layer.js';
 import type LinkService from '../LinkService.js';
 import type React from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 
 type NullableObject<T extends object> = { [P in keyof T]: T[P] | null };
 
@@ -136,6 +137,7 @@ export type DocumentContextType = {
   registerPage: RegisterPage;
   renderMode?: RenderMode;
   rotate?: number | null;
+  setGlobalScale: Dispatch<SetStateAction<number | null>>;
   unregisterPage: UnregisterPage;
 } | null;
 

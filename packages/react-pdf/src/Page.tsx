@@ -361,6 +361,7 @@ const Page: React.FC<PageProps> = function Page(props) {
     renderTextLayer: renderTextLayerProps = true,
     rotate: rotateProps,
     scale: scaleProps = defaultScale,
+    setGlobalScale,
     unregisterPage,
     width,
     ...otherProps
@@ -384,13 +385,15 @@ const Page: React.FC<PageProps> = function Page(props) {
 
   const rotate = rotateProps ?? (page ? page.rotate : null);
 
-  const scale = useMemo(() => {
+  const { scale, pdfjsInternalScale } = useMemo(() => {
     if (!page) {
-      return null;
+      // TODO: Fix this workaround and use a single scale value
+      return { scale: null, pdfjsInternalScale: null };
     }
 
     // Be default, we'll render page at 100% * scale width.
-    let pageScale = 1;
+    let pageScale = 1,
+      pdfjsInternalScale = 1;
 
     // Passing scale explicitly null would cause the page not to render
     const scaleWithDefault = scaleProps ?? defaultScale;
@@ -399,13 +402,17 @@ const Page: React.FC<PageProps> = function Page(props) {
     if (width || height) {
       const viewport = page.getViewport({ scale: 1, rotation: rotate as number });
       if (width) {
+        // TODO: Fix hardcoded values
+        const pageBaseWidth = 816;
+        const sidebarWidth = 0;
+        pdfjsInternalScale = (width - sidebarWidth) / pageBaseWidth;
         pageScale = width / viewport.width;
       } else if (height) {
         pageScale = height / viewport.height;
       }
     }
 
-    return scaleWithDefault * pageScale;
+    return { scale: scaleWithDefault * pageScale, pdfjsInternalScale };
   }, [height, page, rotate, scaleProps, width]);
 
   const drawLayer = useMemo(() => {
@@ -435,6 +442,12 @@ const Page: React.FC<PageProps> = function Page(props) {
   }
 
   useEffect(hook, [_enableRegisterUnregisterPage, pdf, pageIndex, unregisterPage]);
+
+  useEffect(() => {
+    if (pdfjsInternalScale && setGlobalScale) {
+      setGlobalScale(pdfjsInternalScale);
+    }
+  }, [pdfjsInternalScale, setGlobalScale]);
 
   useEffect(
     function updateAnnotationEditorUiManagerPage() {
@@ -703,7 +716,7 @@ const Page: React.FC<PageProps> = function Page(props) {
       data-page-number={pageNumber}
       ref={mergeRefs(inputRef, pageElement)}
       style={{
-        ['--scale-factor' as string]: `${scale}`,
+        ['--scale-factor' as string]: `${(pdfjsInternalScale || 1) * pdfjs.PixelsPerInch.PDF_TO_CSS_UNITS}`,
         backgroundColor: canvasBackground || 'white',
         position: 'relative',
         minWidth: 'min-content',

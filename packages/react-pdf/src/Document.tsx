@@ -7,6 +7,7 @@ import React, {
   useImperativeHandle,
   useMemo,
   useRef,
+  useState,
 } from 'react';
 import PropTypes from 'prop-types';
 import makeEventProps from 'make-event-props';
@@ -123,6 +124,8 @@ export type DocumentProps = {
    */
   highlightEditorColors?: HighlightEditorColorsType;
   defaultHighlightColor?: string;
+  defaultSquareFillColor?: string;
+  defaultSquareOpacity?: string;
   /**
    * The path used to prefix the src attributes of annotation SVGs.
    *
@@ -286,6 +289,8 @@ const Document = forwardRef(function Document(
     file,
     highlightEditorColors,
     defaultHighlightColor,
+    defaultSquareFillColor,
+    defaultSquareOpacity,
     inputRef,
     imageResourcesPath,
     loading = 'Loading PDF…',
@@ -315,6 +320,7 @@ const Document = forwardRef(function Document(
   const eventBus = useRef(new EventBus());
   const defaultInputRef = useRef<HTMLDivElement>(null);
   const mainContainerRef = inputRef || defaultInputRef;
+  const [globalScale, setGlobalScale] = useState<null | number>(null);
 
   const linkService = useRef(new LinkService());
 
@@ -322,6 +328,16 @@ const Document = forwardRef(function Document(
 
   const prevFile = useRef<File>();
   const prevOptions = useRef<Options>();
+
+  useEffect(() => {
+    if (globalScale && (mainContainerRef as any)?.current) {
+      eventBus.current.dispatch('scalechanging', {
+        source: (mainContainerRef as any).current,
+        scale: globalScale,
+        presetValue: 'auto',
+      });
+    }
+  }, [globalScale, mainContainerRef]);
 
   useEffect(() => {
     if (file && file !== prevFile.current && isParameterObject(file)) {
@@ -513,14 +529,41 @@ const Document = forwardRef(function Document(
     [source],
   );
 
-  useEffect(() => {
-    if (defaultHighlightColor && annotationEditorUiManager) {
-      annotationEditorUiManager.updateParams(
-        pdfjs.AnnotationEditorParamsType.HIGHLIGHT_DEFAULT_COLOR,
-        defaultHighlightColor,
-      );
-    }
-  }, [defaultHighlightColor, annotationEditorUiManager]);
+  useEffect(
+    function updateDefaultHighlightColor() {
+      if (defaultHighlightColor && annotationEditorUiManager) {
+        annotationEditorUiManager.updateParams(
+          pdfjs.AnnotationEditorParamsType.HIGHLIGHT_DEFAULT_COLOR,
+          defaultHighlightColor,
+        );
+      }
+    },
+    [defaultHighlightColor, annotationEditorUiManager],
+  );
+
+  useEffect(
+    function updateDefaultSquareOpacity() {
+      if (defaultSquareOpacity && annotationEditorUiManager) {
+        annotationEditorUiManager.updateParams(
+          pdfjs.AnnotationEditorParamsType.SQUARE_OPACITY,
+          defaultSquareOpacity,
+        );
+      }
+    },
+    [defaultSquareOpacity, annotationEditorUiManager],
+  );
+
+  useEffect(
+    function updateDefaultSquareFillColor() {
+      if (defaultSquareFillColor && annotationEditorUiManager) {
+        annotationEditorUiManager.updateParams(
+          pdfjs.AnnotationEditorParamsType.SQUARE_COLOR,
+          defaultSquareFillColor,
+        );
+      }
+    },
+    [defaultSquareFillColor, annotationEditorUiManager],
+  );
 
   function createAnnotationEditorUiManager() {
     const colorPickerOptions = getHighlightColorsString(highlightEditorColors);
@@ -671,6 +714,7 @@ const Document = forwardRef(function Document(
       registerPage,
       renderMode,
       rotate,
+      setGlobalScale,
       unregisterPage,
     }),
     [
@@ -681,6 +725,7 @@ const Document = forwardRef(function Document(
       pdf,
       renderMode,
       rotate,
+      setGlobalScale,
     ],
   );
 

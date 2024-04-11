@@ -37,8 +37,10 @@
   --editorFreeText-editing-cursor: text;
   /*#if COMPONENTS*/
   --editorInk-editing-cursor: pointer;
+  --editorSquare-editing-cursor: pointer;
   /*#else*/
   --editorInk-editing-cursor: svg-load(../images/cursor-editorInk.svg) 0 16, pointer;
+  --editorSquare-editing-cursor: svg-load(../images/cursor-editorSquare.svg) 25 25, pointer;
   /*#endif*/
 }
 
@@ -103,7 +105,11 @@
   cursor: var(--editorInk-editing-cursor);
 }
 
-.annotationEditorLayer :is(.freeTextEditor, .inkEditor, .stampEditor) {
+.annotationEditorLayer.squareEditing {
+  cursor: var(--editorSquare-editing-cursor);
+}
+
+.annotationEditorLayer :is(.freeTextEditor, .inkEditor, .squareEditor, .stampEditor) {
   position: absolute;
   background: transparent;
   z-index: 1;
@@ -164,6 +170,7 @@
   :is(
     .freeTextEditor,
     .inkEditor,
+    .squareEditor,
     .stampEditor,
     .highlightEditor,
     .underlineEditor,
@@ -429,16 +436,19 @@
   user-select: auto;
 }
 
-.annotationEditorLayer .inkEditor {
+.annotationEditorLayer .inkEditor,
+.annotationEditorLayer .squareEditor {
   width: 100%;
   height: 100%;
 }
 
-.annotationEditorLayer .inkEditor.editing {
+.annotationEditorLayer .inkEditor.editing,
+.annotationEditorLayer .squareEditor.editing {
   cursor: inherit;
 }
 
-.annotationEditorLayer .inkEditor .inkEditorCanvas {
+.annotationEditorLayer .inkEditor .inkEditorCanvas,
+.annotationEditorLayer .squareEditor .squareEditorCanvas {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -457,7 +467,7 @@
 }
 
 .annotationEditorLayer {
-  :is(.freeTextEditor, .inkEditor, .stampEditor) {
+  :is(.freeTextEditor, .inkEditor, .squareEditor, .stampEditor) {
     & > .resizers {
       position: absolute;
       inset: 0;
