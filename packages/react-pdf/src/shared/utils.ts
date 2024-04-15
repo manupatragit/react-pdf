@@ -178,3 +178,8 @@ export function loadFromFile(file: Blob): Promise<ArrayBuffer> {
     reader.readAsArrayBuffer(file);
   });
 }
+
+export const isPageInVew = (viewPosition: number, page: any) => {
+  const pageBottom = page.offsetTop + page.clientTop + page.clientHeight;
+  return pageBottom > viewPosition;
+};

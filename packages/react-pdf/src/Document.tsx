@@ -14,6 +14,7 @@ import makeEventProps from 'make-event-props';
 import makeCancellable from 'make-cancellable-promise';
 import clsx from 'clsx';
 import invariant from 'tiny-invariant';
+import debounce from 'lodash.debounce';
 import warning from 'warning';
 import { dequal } from 'dequal';
 import pdfjs from './pdfjs.js';
@@ -33,6 +34,7 @@ import {
   isBlob,
   isBrowser,
   isDataURI,
+  isPageInVew,
   loadFromFile,
 } from './shared/utils.js';
 
@@ -78,6 +80,7 @@ type OnSourceSuccess = () => void;
 
 export type DocumentProps = {
   annotationEditorMode: number;
+  bookmarkDestPageNumber?: any;
   children?: React.ReactNode;
   /**
    * Class name(s) that will be added to rendered element along with the default `react-pdf__Document`.
@@ -183,6 +186,7 @@ export type DocumentProps = {
    * @example (pdf) => alert('Loaded a file with ' + pdf.numPages + ' pages!')
    */
   onLoadSuccess?: OnDocumentLoadSuccess;
+  onPageChange?: any;
   /**
    * Function called when a password-protected PDF is loaded.
    *
@@ -281,6 +285,7 @@ const getHighlightColorsString = (highlightEditorColors?: HighlightEditorColorsT
 const Document = forwardRef(function Document(
   {
     annotationEditorMode = pdfjs.AnnotationEditorType.DISABLE,
+    bookmarkDestPageNumber,
     children,
     className,
     error = 'Failed to load PDF file.',
@@ -299,6 +304,7 @@ const Document = forwardRef(function Document(
     onLoadError: onLoadErrorProps,
     onLoadProgress,
     onLoadSuccess: onLoadSuccessProps,
+    onPageChange: onPageChangeProps,
     onPassword = defaultOnPassword,
     onSourceError: onSourceErrorProps,
     onSourceSuccess: onSourceSuccessProps,
@@ -328,6 +334,7 @@ const Document = forwardRef(function Document(
 
   const prevFile = useRef<File>();
   const prevOptions = useRef<Options>();
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     if (globalScale && (mainContainerRef as any)?.current) {
@@ -563,6 +570,60 @@ const Document = forwardRef(function Document(
       }
     },
     [defaultSquareFillColor, annotationEditorUiManager],
+  );
+
+  useEffect(
+    function signalPageChange() {
+      if (!onPageChangeProps) {
+        return;
+      }
+
+      onPageChangeProps(currentPage);
+    },
+    [onPageChangeProps, currentPage],
+  );
+
+  useEffect(
+    function attachScrollHandler() {
+      if (!(mainContainerRef && pages && onPageChangeProps)) {
+        return;
+      }
+
+      const detectCurrentPageOnScroll = debounce(() => {
+        if (!((mainContainerRef as any) && pages.current?.length)) {
+          return;
+        }
+
+        for (let i = 0; i < pages.current?.length; i++) {
+          const page = pages.current[i];
+          if (isPageInVew((mainContainerRef as any).current.scrollTop, page)) {
+            setCurrentPage(i + 1);
+            return;
+          }
+        }
+      }, 1000);
+
+      (mainContainerRef as any).current.addEventListener('scroll', detectCurrentPageOnScroll);
+
+      return () => {
+        (mainContainerRef as any)?.current?.removeEventListener(
+          'scroll',
+          detectCurrentPageOnScroll,
+        );
+      };
+    },
+    [mainContainerRef, pages],
+  );
+
+  useEffect(
+    function moveToBookmarkPageNumber() {
+      if (!bookmarkDestPageNumber) {
+        return;
+      }
+
+      linkService.current.goToPage(bookmarkDestPageNumber);
+    },
+    [bookmarkDestPageNumber],
   );
 
   function createAnnotationEditorUiManager() {

@@ -1,0 +1,6 @@
+/* TODO: Move this file out of the page directory */
+.react-pdf__Document {
+  width: min-content;
+  overflow-y: scroll;
+  height: 100%;
+}
