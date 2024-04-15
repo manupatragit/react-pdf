@@ -302,7 +302,6 @@ export type PageProps = {
    * @example 0.5
    */
   scale?: number;
-  unregisterPage?: undefined;
   /**
    * Page width. If neither `height` nor `width` are defined, page will be rendered at the size defined in PDF. If you define `width` and `height` at the same time, `height` will be ignored. If you define `width` and `scale` at the same time, the width will be multiplied by a given factor.
    *
@@ -362,7 +361,6 @@ const Page: React.FC<PageProps> = function Page(props) {
     rotate: rotateProps,
     scale: scaleProps = defaultScale,
     setGlobalScale,
-    unregisterPage,
     width,
     ...otherProps
   } = mergedProps;
@@ -427,21 +425,6 @@ const Page: React.FC<PageProps> = function Page(props) {
     },
     [drawLayer],
   );
-
-  function hook() {
-    return () => {
-      if (!isProvided(pageIndex)) {
-        // Impossible, but TypeScript doesn't know that
-        return;
-      }
-
-      if (_enableRegisterUnregisterPage && unregisterPage) {
-        unregisterPage(pageIndex);
-      }
-    };
-  }
-
-  useEffect(hook, [_enableRegisterUnregisterPage, pdf, pageIndex, unregisterPage]);
 
   useEffect(() => {
     if (pdfjsInternalScale && setGlobalScale) {

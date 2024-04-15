@@ -760,10 +760,6 @@ const Document = forwardRef(function Document(
     pages.current[pageIndex] = ref;
   }
 
-  function unregisterPage(pageIndex: number) {
-    delete pages.current[pageIndex];
-  }
-
   const childContext = useMemo(
     () => ({
       annotationEditorUiManager,
@@ -776,7 +772,6 @@ const Document = forwardRef(function Document(
       renderMode,
       rotate,
       setGlobalScale,
-      unregisterPage,
     }),
     [
       annotationEditorUiManager,

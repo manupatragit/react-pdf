@@ -64,8 +64,6 @@ export type Source =
   | { range: PDFDataRangeTransport }
   | { url: string };
 
-export type UnregisterPage = (pageIndex: number) => void;
-
 /* Complex types */
 export type CustomRenderer = React.FunctionComponent | React.ComponentClass;
 
@@ -138,7 +136,6 @@ export type DocumentContextType = {
   renderMode?: RenderMode;
   rotate?: number | null;
   setGlobalScale: Dispatch<SetStateAction<number | null>>;
-  unregisterPage: UnregisterPage;
 } | null;
 
 export type PageContextType = {
