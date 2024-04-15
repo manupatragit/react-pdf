@@ -180,6 +180,10 @@ export function loadFromFile(file: Blob): Promise<ArrayBuffer> {
 }
 
 export const isPageInVew = (viewPosition: number, page: any) => {
+  if (!page) {
+    return false;
+  }
+
   const pageBottom = page.offsetTop + page.clientTop + page.clientHeight;
   return pageBottom > viewPosition;
 };
