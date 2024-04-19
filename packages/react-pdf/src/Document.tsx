@@ -127,6 +127,7 @@ export type DocumentProps = {
    */
   highlightEditorColors?: HighlightEditorColorsType;
   defaultHighlightColor?: string;
+  defaultPopupAnnotationColor?: string;
   defaultSquareFillColor?: string;
   defaultSquareOpacity?: string;
   /**
@@ -294,6 +295,7 @@ const Document = forwardRef(function Document(
     file,
     highlightEditorColors,
     defaultHighlightColor,
+    defaultPopupAnnotationColor,
     defaultSquareFillColor,
     defaultSquareOpacity,
     inputRef,
@@ -570,6 +572,18 @@ const Document = forwardRef(function Document(
       }
     },
     [defaultSquareFillColor, annotationEditorUiManager],
+  );
+
+  useEffect(
+    function updateDefaultPopupAnnotationColor() {
+      if (defaultPopupAnnotationColor && annotationEditorUiManager) {
+        annotationEditorUiManager.updateParams(
+          pdfjs.AnnotationEditorParamsType.POPUP_COLOR,
+          defaultPopupAnnotationColor,
+        );
+      }
+    },
+    [defaultPopupAnnotationColor, annotationEditorUiManager],
   );
 
   useEffect(

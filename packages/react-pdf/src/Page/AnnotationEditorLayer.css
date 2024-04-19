@@ -35,6 +35,7 @@
     0px - (var(--outline-width) + var(--resizer-size)) / 2 - var(--outline-around-width)
   );
   --editorFreeText-editing-cursor: text;
+  --editorPopup-editing-cursor: text;
   /*#if COMPONENTS*/
   --editorInk-editing-cursor: pointer;
   --editorSquare-editing-cursor: pointer;
@@ -101,6 +102,10 @@
   cursor: var(--editorFreeText-editing-cursor);
 }
 
+.annotationEditorLayer.popupEditing {
+  cursor: var(--editorPopup-editing-cursor);
+}
+
 .annotationEditorLayer.inkEditing {
   cursor: var(--editorInk-editing-cursor);
 }
@@ -109,7 +114,81 @@
   cursor: var(--editorSquare-editing-cursor);
 }
 
-.annotationEditorLayer :is(.freeTextEditor, .inkEditor, .squareEditor, .stampEditor) {
+.popupEditor {
+  box-shadow: 0px 9px 28px 8px #0000000d;
+  border-radius: 8px;
+  padding: 0 !important;
+
+  .sticky-note-large {
+    --action-bar-height: 20px;
+    width: 265px;
+    height: 160px;
+    display: none;
+    border-radius: inherit;
+
+    &.show {
+      display: block;
+    }
+
+    .sticky-note-action-bar {
+      height: var(--action-bar-height);
+      border-radius: inherit;
+    }
+
+    & .internal {
+      padding: 0 12px 12px;
+      overflow: auto !important;
+      width: calc(100% - 24px);
+      height: calc(100% - var(--action-bar-height) - 12px);
+      border-radius: inherit;
+    }
+
+    .sticky-note-action-button {
+      font-size: 10px;
+      float: right;
+      cursor: pointer;
+      padding: 5px;
+    }
+
+    .sticky-note-actions-dropdown {
+      position: absolute;
+      width: max-content;
+      right: 0;
+      background: white;
+      border-radius: 8px;
+      display: none;
+      top: 24px;
+
+      &.show {
+        display: block;
+      }
+    }
+
+    .sticky-note-dropdown-option {
+      padding: 5px 12px;
+      font-size: 10px;
+      cursor: pointer;
+    }
+  }
+
+  .sticky-note-small {
+    box-shadow: 0px 2px 4px 0px #00000005;
+
+    width: 25px;
+    height: 25px;
+    display: none;
+
+    &.show {
+      display: flex;
+    }
+
+    svg {
+      flex-grow: 1;
+    }
+  }
+}
+
+.annotationEditorLayer :is(.freeTextEditor, .inkEditor, .popupEditor, .squareEditor, .stampEditor) {
   position: absolute;
   background: transparent;
   z-index: 1;
@@ -170,6 +249,7 @@
   :is(
     .freeTextEditor,
     .inkEditor,
+    .popupEditor,
     .squareEditor,
     .stampEditor,
     .highlightEditor,
@@ -395,14 +475,16 @@
   }
 }
 
-.annotationEditorLayer .freeTextEditor {
+.annotationEditorLayer .freeTextEditor,
+.annotationEditorLayer .popupEditor {
   padding: calc(var(--freetext-padding) * var(--scale-factor));
   width: auto;
   height: auto;
   touch-action: none;
 }
 
-.annotationEditorLayer .freeTextEditor .internal {
+.annotationEditorLayer .freeTextEditor .internal,
+.annotationEditorLayer .popupEditor .internal {
   background: transparent;
   border: none;
   inset: 0;
@@ -413,7 +495,8 @@
   user-select: none;
 }
 
-.annotationEditorLayer .freeTextEditor .overlay {
+.annotationEditorLayer .freeTextEditor .overlay,
+.annotationEditorLayer .popupEditor .overlay {
   position: absolute;
   display: none;
   background: transparent;
@@ -422,16 +505,19 @@
   height: 100%;
 }
 
-.annotationEditorLayer freeTextEditor .overlay.enabled {
+.annotationEditorLayer .freeTextEditor .overlay.enabled,
+.annotationEditorLayer .popupEditor .overlay.enabled {
   display: block;
 }
 
-.annotationEditorLayer .freeTextEditor .internal:empty::before {
+.annotationEditorLayer .freeTextEditor .internal:empty::before,
+.annotationEditorLayer .popupEditor .internal:empty::before {
   content: attr(default-content);
   color: gray;
 }
 
-.annotationEditorLayer .freeTextEditor .internal:focus {
+.annotationEditorLayer .freeTextEditor .internal:focus,
+.annotationEditorLayer .popupEditor .internal:focus {
   outline: none;
   user-select: auto;
 }
@@ -467,7 +553,7 @@
 }
 
 .annotationEditorLayer {
-  :is(.freeTextEditor, .inkEditor, .squareEditor, .stampEditor) {
+  :is(.freeTextEditor, .popupEditor, .inkEditor, .squareEditor, .stampEditor) {
     & > .resizers {
       position: absolute;
       inset: 0;
