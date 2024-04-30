@@ -163,6 +163,7 @@ export type DocumentProps = {
    * @example {this.renderNoData}
    */
   noData?: NodeOrRenderer;
+  onAnnotationUpdate?: any;
   /**
    * Function called when an outline item or a thumbnail has been clicked. Usually, you would like to use this callback to move the user wherever they requested to.
    *
@@ -302,6 +303,7 @@ const Document = forwardRef(function Document(
     imageResourcesPath,
     loading = 'Loading PDF…',
     noData = 'No PDF file specified.',
+    onAnnotationUpdate,
     onItemClick,
     onLoadError: onLoadErrorProps,
     onLoadProgress,
@@ -347,6 +349,31 @@ const Document = forwardRef(function Document(
       });
     }
   }, [globalScale, mainContainerRef]);
+
+  useEffect(
+    function detectAnnotationUpdate() {
+      if (!(eventBus && onAnnotationUpdate)) {
+        return;
+      }
+
+      const onAnnotationDelete = (...args: any) => {
+        onAnnotationUpdate(...args, { type: 'delete' });
+      };
+
+      const onAnnotationUpdateWrapper = (...args: any) => {
+        onAnnotationUpdate(...args, { type: 'update' });
+      };
+
+      eventBus.current._on('com_annotationupdated', onAnnotationUpdateWrapper);
+      eventBus.current._on('com_annotationdeleted', onAnnotationDelete);
+
+      return () => {
+        eventBus.current._off('com_annotationupdated', onAnnotationUpdateWrapper);
+        eventBus.current._off('com_annotationdeleted', onAnnotationDelete);
+      };
+    },
+    [eventBus, onAnnotationUpdate],
+  );
 
   useEffect(() => {
     if (file && file !== prevFile.current && isParameterObject(file)) {
