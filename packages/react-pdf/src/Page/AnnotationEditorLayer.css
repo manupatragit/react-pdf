@@ -143,11 +143,11 @@
       border-radius: inherit;
       word-break: break-all;
       scrollbar-width: thin;
-      scrollbar-color: var(--scrollbar-color) transparent;
+      scrollbar-color: rgb(121 121 123) transparent;
     }
 
     &.internal::-webkit-scrollbar-thumb {
-      background-color: var(--scrollbar-color);
+      background-color: rgb(121 121 123);
       border-radius: 10px;
     }
 
