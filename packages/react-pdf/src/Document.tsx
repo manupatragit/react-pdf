@@ -80,6 +80,7 @@ type OnSourceSuccess = () => void;
 
 export type DocumentProps = {
   annotationEditorMode: number;
+  annotationsList?: any;
   bookmarkDestPageNumber?: any;
   children?: React.ReactNode;
   /**
@@ -286,6 +287,7 @@ const getHighlightColorsString = (highlightEditorColors?: HighlightEditorColorsT
  */
 const Document = forwardRef(function Document(
   {
+    annotationsList,
     annotationEditorMode = pdfjs.AnnotationEditorType.DISABLE,
     bookmarkDestPageNumber,
     children,
@@ -335,10 +337,12 @@ const Document = forwardRef(function Document(
   const linkService = useRef(new LinkService());
 
   const pages = useRef<HTMLDivElement[]>([]);
+  const annotationEditorLayers = useRef<any>([]);
 
   const prevFile = useRef<File>();
   const prevOptions = useRef<Options>();
   const [currentPage, setCurrentPage] = useState(1);
+  const [canLoadAnnotations, setCanLoadAnnotations] = useState(false);
 
   useEffect(() => {
     if (globalScale && (mainContainerRef as any)?.current) {
@@ -614,6 +618,17 @@ const Document = forwardRef(function Document(
   );
 
   useEffect(
+    function loadAnnotations() {
+      if (!canLoadAnnotations) {
+        return;
+      }
+
+      annotationEditorUiManager.loadAnnotations({ annotationsList });
+    },
+    [canLoadAnnotations],
+  );
+
+  useEffect(
     function signalPageChange() {
       if (!onPageChangeProps) {
         return;
@@ -700,6 +715,7 @@ const Document = forwardRef(function Document(
     }
 
     pages.current = new Array(pdf.numPages);
+    annotationEditorLayers.current = new Array(pdf.numPages);
     linkService.current.setDocument(pdf);
     createAnnotationEditorUiManager();
   }
@@ -801,6 +817,16 @@ const Document = forwardRef(function Document(
     pages.current[pageIndex] = ref;
   }
 
+  function registerAnnotationEditorLayer(pageIndex: number, ref: HTMLDivElement) {
+    annotationEditorLayers.current[pageIndex] = ref;
+    setCanLoadAnnotations(
+      annotationsList &&
+        annotationEditorUiManager &&
+        pages.current.length > 0 &&
+        pages.current.length == annotationEditorLayers.current.filter(Boolean).length,
+    );
+  }
+
   const childContext = useMemo(
     () => ({
       annotationEditorUiManager,
@@ -809,6 +835,7 @@ const Document = forwardRef(function Document(
       linkService: linkService.current,
       onItemClick,
       pdf,
+      registerAnnotationEditorLayer,
       registerPage,
       renderMode,
       rotate,

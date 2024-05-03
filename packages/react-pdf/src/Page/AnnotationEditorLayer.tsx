@@ -21,6 +21,7 @@ export default function AnnotationEditorLayer() {
     annotationLayer,
     page,
     pageIndex,
+    registerAnnotationEditorLayer,
     rotate,
     scale = 1,
     textLayerRef,
@@ -56,6 +57,9 @@ export default function AnnotationEditorLayer() {
     });
 
     setAnnotationEditorLayer(newAnnotationEditorLayer);
+    if (registerAnnotationEditorLayer) {
+      registerAnnotationEditorLayer(pageIndex, newAnnotationEditorLayer);
+    }
   }
 
   useEffect(

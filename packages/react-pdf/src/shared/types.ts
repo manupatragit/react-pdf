@@ -50,6 +50,7 @@ export type OnLoadProgressArgs = {
 };
 
 export type RegisterPage = (pageIndex: number, ref: HTMLDivElement) => void;
+export type RegisterAnnotationEditorLayer = (pageIndex: number, ref: HTMLDivElement) => void;
 
 export type RenderMode = 'canvas' | 'custom' | 'none' | 'svg';
 
@@ -133,6 +134,7 @@ export type DocumentContextType = {
   onItemClick?: (args: OnItemClickArgs) => void;
   pdf?: PDFDocumentProxy | false;
   registerPage: RegisterPage;
+  registerAnnotationEditorLayer: RegisterAnnotationEditorLayer;
   renderMode?: RenderMode;
   rotate?: number | null;
   setGlobalScale: Dispatch<SetStateAction<number | null>>;
