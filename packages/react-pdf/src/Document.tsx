@@ -220,6 +220,7 @@ export type DocumentProps = {
    *
    * @example { cMapUrl: '/cmaps/' }
    */
+  onUpdateGlobalAnnotationParams?: any;
   options?: Options;
   /**
    * Rendering mode of the document. Can be `"canvas"`, `"custom"`, `"none"` or `"svg"`. If set to `"custom"`, `customRenderer` must also be provided.
@@ -314,6 +315,7 @@ const Document = forwardRef(function Document(
     onPassword = defaultOnPassword,
     onSourceError: onSourceErrorProps,
     onSourceSuccess: onSourceSuccessProps,
+    onUpdateGlobalAnnotationParams,
     options,
     renderMode,
     rotate,
@@ -573,7 +575,7 @@ const Document = forwardRef(function Document(
     function updateDefaultHighlightColor() {
       if (defaultHighlightColor && annotationEditorUiManager) {
         annotationEditorUiManager.updateParams(
-          pdfjs.AnnotationEditorParamsType.HIGHLIGHT_DEFAULT_COLOR,
+          pdfjs.AnnotationEditorParamsType.HIGHLIGHT_COLOR,
           defaultHighlightColor,
         );
       }
@@ -680,6 +682,25 @@ const Document = forwardRef(function Document(
       linkService.current.goToPage(bookmarkDestPageNumber);
     },
     [bookmarkDestPageNumber],
+  );
+
+  useEffect(
+    function updateGlobalParams() {
+      if (!(annotationEditorUiManager && eventBus.current && onUpdateGlobalAnnotationParams)) {
+        return;
+      }
+
+      const handler = ({ params }: any) => {
+        onUpdateGlobalAnnotationParams({ params });
+      };
+
+      eventBus.current._on('com_updateglobalparams', handler);
+
+      return () => {
+        eventBus.current._off('com_updateglobalparams', handler);
+      };
+    },
+    [annotationEditorUiManager],
   );
 
   function createAnnotationEditorUiManager() {

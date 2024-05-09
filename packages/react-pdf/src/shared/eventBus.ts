@@ -35,7 +35,6 @@ export class EventBus {
    * @param {Object} [options]
    */
   on(eventName: any, listener: any, options: any = null) {
-    console.log('on called', { eventName, listener });
     this._on(eventName, listener, {
       external: true,
       once: options?.once,
@@ -48,7 +47,6 @@ export class EventBus {
    * @param {Object} [options]
    */
   off(eventName: any, listener: any, options: any = null) {
-    console.log('on called', { eventName, listener });
     this._off(eventName, listener, {
       external: true,
       once: options?.once,
