@@ -122,7 +122,6 @@
   .sticky-note-large {
     --action-bar-height: 20px;
     width: 265px;
-    height: 160px;
     display: none;
     border-radius: inherit;
 
@@ -139,7 +138,8 @@
       padding: 0 12px 12px;
       overflow-y: auto !important;
       width: calc(100% - 24px);
-      height: calc(100% - var(--action-bar-height) - 12px);
+      min-height: 128px;
+      max-height: 212px;
       border-radius: inherit;
       word-break: break-all;
       scrollbar-width: thin;
@@ -160,7 +160,7 @@
     }
 
     .sticky-note-action-button {
-      font-size: 10px;
+      font-size: 14px;
       float: right;
       cursor: pointer;
       padding: 5px;
@@ -506,7 +506,7 @@
   inset: 0;
   overflow: visible;
   white-space: pre-wrap;
-  font: 10px sans-serif;
+  font: 14px sans-serif;
   line-height: var(--freetext-line-height);
   user-select: none;
 }
