@@ -3,4 +3,6 @@
   width: min-content;
   overflow-y: scroll;
   height: 100%;
+  /* Required for search matches scroll */
+  position: relative;
 }

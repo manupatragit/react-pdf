@@ -82,7 +82,7 @@ export default class LinkService implements IPDFLinkService {
   set page(value: number) {
     invariant(this.pdfViewer, 'PDF viewer is not initialized.');
 
-    this.pdfViewer.currentPageNumber = value;
+    this.pdfViewer.scrollPageIntoView({ pageNumber: value });
   }
 
   // eslint-disable-next-line @typescript-eslint/class-literal-property-style

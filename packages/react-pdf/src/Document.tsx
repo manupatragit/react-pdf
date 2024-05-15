@@ -8,6 +8,7 @@ import React, {
   useMemo,
   useRef,
   useState,
+  type MutableRefObject,
 } from 'react';
 import PropTypes from 'prop-types';
 import makeEventProps from 'make-event-props';
@@ -67,6 +68,7 @@ import type {
   Source,
 } from './shared/types.js';
 import Page, { type PageProps } from './Page.js';
+import { PDFFindController } from './shared/pdf_find_controller.js';
 
 const { PDFDataRangeTransport } = pdfjs;
 
@@ -109,6 +111,7 @@ export type DocumentProps = {
    * Link target for external links rendered in annotations.
    */
   externalLinkTarget?: ExternalLinkTarget;
+  eventsRef?: any;
   /**
    * What PDF should be displayed.
    *
@@ -245,6 +248,49 @@ export type DocumentProps = {
   width?: number;
 } & EventProps<DocumentCallback | false | undefined>;
 
+class Viewer {
+  currentPageNumber = 1;
+  onItemClick: OnItemClick | undefined;
+  pages: MutableRefObject<HTMLDivElement[]>;
+
+  constructor({
+    onItemClick,
+    pages,
+  }: {
+    onItemClick?: OnItemClick;
+    pages: MutableRefObject<HTMLDivElement[]>;
+  }) {
+    this.onItemClick = onItemClick;
+    this.pages = pages;
+  }
+
+  // Handling jumping to internal links target
+  scrollPageIntoView(args: ScrollPageIntoViewArgs) {
+    const { dest, pageNumber, pageIndex = pageNumber - 1 } = args;
+    this.currentPageNumber = 1;
+
+    // First, check if custom handling of onItemClick was provided
+    if (this.onItemClick) {
+      this.onItemClick({ dest, pageIndex, pageNumber });
+      return;
+    }
+
+    // If not, try to look for target page within the <Document>.
+    const page = this.pages.current[pageIndex];
+
+    if (page) {
+      // Scroll to the page automatically
+      page.scrollIntoView();
+      return;
+    }
+
+    warning(
+      false,
+      `An internal link leading to page ${pageNumber} was clicked, but neither <Document> was provided with onItemClick nor it was able to find the page within itself. Either provide onItemClick to <Document> and handle navigating by yourself or ensure that all pages are rendered within <Document>.`,
+    );
+  }
+}
+
 const defaultOnPassword: OnPassword = (callback, reason) => {
   switch (reason) {
     case PasswordResponses.NEED_PASSWORD: {
@@ -294,6 +340,7 @@ const Document = forwardRef(function Document(
     children,
     className,
     error = 'Failed to load PDF file.',
+    eventsRef: eventsRefProp,
     externalLinkRel,
     externalLinkTarget,
     file,
@@ -335,16 +382,29 @@ const Document = forwardRef(function Document(
   const defaultInputRef = useRef<HTMLDivElement>(null);
   const mainContainerRef = inputRef || defaultInputRef;
   const [globalScale, setGlobalScale] = useState<null | number>(null);
-
   const linkService = useRef(new LinkService());
-
+  const findController = useRef(
+    new PDFFindController({
+      linkService: linkService.current,
+      eventBus: eventBus.current,
+      updateMatchesCountOnProgress: true,
+    }),
+  );
   const pages = useRef<HTMLDivElement[]>([]);
   const annotationEditorLayers = useRef<any>([]);
-
   const prevFile = useRef<File>();
   const prevOptions = useRef<Options>();
   const [currentPage, setCurrentPage] = useState(1);
   const [canLoadAnnotations, setCanLoadAnnotations] = useState(false);
+
+  useEffect(
+    function initializeEventsRef() {
+      if (eventsRefProp) {
+        eventsRefProp.current = {};
+      }
+    },
+    [eventsRefProp],
+  );
 
   useEffect(() => {
     if (globalScale && (mainContainerRef as any)?.current) {
@@ -404,32 +464,7 @@ const Document = forwardRef(function Document(
     }
   }, [options]);
 
-  const viewer = useRef({
-    // Handling jumping to internal links target
-    scrollPageIntoView: (args: ScrollPageIntoViewArgs) => {
-      const { dest, pageNumber, pageIndex = pageNumber - 1 } = args;
-
-      // First, check if custom handling of onItemClick was provided
-      if (onItemClick) {
-        onItemClick({ dest, pageIndex, pageNumber });
-        return;
-      }
-
-      // If not, try to look for target page within the <Document>.
-      const page = pages.current[pageIndex];
-
-      if (page) {
-        // Scroll to the page automatically
-        page.scrollIntoView();
-        return;
-      }
-
-      warning(
-        false,
-        `An internal link leading to page ${pageNumber} was clicked, but neither <Document> was provided with onItemClick nor it was able to find the page within itself. Either provide onItemClick to <Document> and handle navigating by yourself or ensure that all pages are rendered within <Document>.`,
-      );
-    },
-  });
+  const viewer = useRef(new Viewer({ onItemClick, pages }));
 
   useImperativeHandle(
     ref,
@@ -632,18 +667,20 @@ const Document = forwardRef(function Document(
 
   useEffect(
     function signalPageChange() {
-      if (!onPageChangeProps) {
-        return;
+      viewer.current.currentPageNumber = currentPage;
+
+      if (onPageChangeProps) {
+        onPageChangeProps(currentPage);
       }
 
-      onPageChangeProps(currentPage);
+      // TODO: Send 'pagechanging' event
     },
     [onPageChangeProps, currentPage],
   );
 
   useEffect(
     function attachScrollHandler() {
-      if (!(mainContainerRef && pages && onPageChangeProps)) {
+      if (!(mainContainerRef && pages)) {
         return;
       }
 
@@ -722,6 +759,48 @@ const Document = forwardRef(function Document(
     annotationEditorUiManagerDispatch({ type: 'RESOLVE', value: uiManager });
   }
 
+  const enableSearch = (document: PDFDocumentProxy) => {
+    if (!(eventsRefProp && document)) {
+      return;
+    }
+
+    findController.current.setDocument(document);
+
+    const dispatchSearchEvent = (searchString: string, type: string = '', findPrev = false) => {
+      eventBus.current.dispatch('find', {
+        source: 'react-pdf-document',
+        type,
+        query: searchString || '',
+        caseSensitive: false,
+        entireWord: false,
+        highlightAll: false,
+        findPrevious: findPrev,
+        matchDiacritics: false,
+      });
+    };
+
+    const search = (searchTerm: string) => {
+      dispatchSearchEvent(searchTerm);
+    };
+
+    const findNext = (searchTerm: string) => {
+      dispatchSearchEvent(searchTerm, 'again', false);
+    };
+
+    const findPrevious = (searchTerm: string) => {
+      dispatchSearchEvent(searchTerm, 'again', true);
+    };
+
+    const onFindBarClosed = () => {
+      eventBus.current.dispatch('findbarclose', { source: 'react-pdf-document' });
+    };
+
+    eventsRefProp.current.search = search;
+    eventsRefProp.current.findNext = findNext;
+    eventsRefProp.current.findPrevious = findPrevious;
+    eventsRefProp.current.onFindBarClosed = onFindBarClosed;
+  };
+
   /**
    * Called when a document is read successfully
    */
@@ -739,6 +818,7 @@ const Document = forwardRef(function Document(
     annotationEditorLayers.current = new Array(pdf.numPages);
     linkService.current.setDocument(pdf);
     createAnnotationEditorUiManager();
+    enableSearch(pdf);
   }
 
   /**
@@ -852,6 +932,8 @@ const Document = forwardRef(function Document(
     () => ({
       annotationEditorUiManager,
       annotationEditorMode,
+      eventBus: eventBus.current,
+      findController: findController.current,
       imageResourcesPath,
       linkService: linkService.current,
       onItemClick,

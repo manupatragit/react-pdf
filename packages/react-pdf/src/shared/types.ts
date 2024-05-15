@@ -129,6 +129,8 @@ export type Options = NullableObject<Omit<DocumentInitParameters, KeyOfUnion<Sou
 export type DocumentContextType = {
   annotationEditorUiManager: any;
   annotationEditorMode: any;
+  eventBus: any;
+  findController: any;
   imageResourcesPath?: ImageResourcesPath;
   linkService: LinkService;
   onItemClick?: (args: OnItemClickArgs) => void;

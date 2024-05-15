@@ -8,6 +8,7 @@ import warning from 'warning';
 import pdfjs from '../pdfjs.js';
 
 import usePageContext from '../shared/hooks/usePageContext.js';
+import useDocumentContext from '../shared/hooks/useDocumentContext.js';
 import useResolver from '../shared/hooks/useResolver.js';
 import { cancelRunningTask } from '../shared/utils.js';
 
@@ -16,6 +17,7 @@ import type {
   TextItem,
   TextMarkedContent,
 } from '@commutatus/pdfjs-dist/types/src/display/api.js';
+import { TextHighlighter } from './text_highlighter.js';
 
 function isTextItem(item: TextItem | TextMarkedContent): item is TextItem {
   return 'str' in item;
@@ -23,11 +25,16 @@ function isTextItem(item: TextItem | TextMarkedContent): item is TextItem {
 
 export default function TextLayer() {
   const pageContext = usePageContext();
+  const documentContext = useDocumentContext();
 
   invariant(pageContext, 'Unable to find Page context.');
 
+  const mergedProps = { ...documentContext, ...pageContext };
+
   const {
     customTextRenderer,
+    eventBus,
+    findController,
     onGetTextError,
     onGetTextSuccess,
     onRenderTextLayerError,
@@ -38,13 +45,22 @@ export default function TextLayer() {
     rotate,
     scale,
     textLayerRef: layerElement,
-  } = pageContext;
+  } = mergedProps;
 
   invariant(page, 'Attempted to load page text content, but no page was specified.');
 
   const [textContentState, textContentDispatch] = useResolver<TextContent>();
   const { value: textContent, error: textContentError } = textContentState;
   const endElement = useRef<HTMLElement>();
+  const textHighlighter = useRef(
+    new TextHighlighter({
+      pageIndex,
+      eventBus,
+      findController,
+    }),
+  );
+  const textDivs = useRef([]);
+  const textContentItemsStr = useRef([]);
 
   warning(
     parseInt(
@@ -53,6 +69,10 @@ export default function TextLayer() {
     ) === 1,
     'TextLayer styles not found. Read more: https://github.com/wojtekmaj/react-pdf#support-for-text-layer',
   );
+
+  useEffect(() => {
+    textHighlighter.current.setTextMapping(textDivs.current, textContentItemsStr.current);
+  }, []);
 
   /**
    * Called when a page text content is read successfully
@@ -133,6 +153,9 @@ export default function TextLayer() {
    * Called when a text layer is rendered successfully
    */
   const onRenderSuccess = useCallback(() => {
+    // Enable text search
+    textHighlighter.current.enable();
+
     if (onRenderTextLayerSuccess) {
       onRenderTextLayerSuccess();
     }
@@ -144,6 +167,7 @@ export default function TextLayer() {
   const onRenderError = useCallback(
     (error: Error) => {
       warning(false, error.toString());
+      textHighlighter.current.disable();
 
       if (onRenderTextLayerError) {
         onRenderTextLayerError(error);
@@ -196,6 +220,8 @@ export default function TextLayer() {
       container: layer,
       textContentSource,
       viewport,
+      textDivs: textDivs.current,
+      textContentItemsStr: textContentItemsStr.current,
     };
 
     const cancellable = pdfjs.renderTextLayer(parameters);
