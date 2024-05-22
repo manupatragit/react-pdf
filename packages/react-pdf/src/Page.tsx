@@ -400,11 +400,9 @@ const Page: React.FC<PageProps> = function Page(props) {
     if (width || height) {
       const viewport = page.getViewport({ scale: 1, rotation: rotate as number });
       if (width) {
-        // TODO: Fix hardcoded values
-        const pageBaseWidth = 816;
-        const sidebarWidth = 0;
-        pdfjsInternalScale = (width - sidebarWidth) / pageBaseWidth;
         pageScale = width / viewport.width;
+        // pdf.js internally multiplies by this value
+        pdfjsInternalScale = pageScale / pdfjs.PixelsPerInch.PDF_TO_CSS_UNITS;
       } else if (height) {
         pageScale = height / viewport.height;
       }
