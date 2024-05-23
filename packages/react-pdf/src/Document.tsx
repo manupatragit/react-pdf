@@ -773,7 +773,7 @@ const Document = forwardRef(function Document(
         query: searchString || '',
         caseSensitive: false,
         entireWord: false,
-        highlightAll: false,
+        highlightAll: true,
         findPrevious: findPrev,
         matchDiacritics: false,
       });

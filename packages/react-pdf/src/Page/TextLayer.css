@@ -65,7 +65,7 @@
 }
 
 .textLayer .highlight {
-  --highlight-bg-color: rgb(180 0 170);
+  --highlight-bg-color: rgb(180 0 170 / 20%);
   --highlight-selected-bg-color: rgb(0 100 0 / 20%);
   margin: -1px;
   padding: 1px;
