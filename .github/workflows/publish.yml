@@ -40,7 +40,7 @@ jobs:
         run: corepack enable
 
       - name: Install dependencies
-        run: yarn --immutable
+        run: yarn install --no-immutable
 
       - name: Generate archive
         run: yarn pack
