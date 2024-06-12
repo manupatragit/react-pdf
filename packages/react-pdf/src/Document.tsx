@@ -69,6 +69,7 @@ import type {
 } from './shared/types.js';
 import Page, { type PageProps } from './Page.js';
 import { PDFFindController } from './shared/pdf_find_controller.js';
+import { DownloadManager } from './shared/download_manager.js';
 
 const { PDFDataRangeTransport } = pdfjs;
 
@@ -124,6 +125,7 @@ export type DocumentProps = {
    * @example { url: 'https://example.com/sample.pdf' }
    */
   file?: File;
+  fileName?: string;
   /**
    * List of colors to be used with highlight editor
    *
@@ -131,7 +133,7 @@ export type DocumentProps = {
    */
   highlightEditorColors?: HighlightEditorColorsType;
   defaultHighlightColor?: string;
-  defaultPopupAnnotationColor?: string;
+  defaultTextAnnotationColor?: string;
   defaultSquareFillColor?: string;
   defaultSquareOpacity?: string;
   /**
@@ -344,9 +346,10 @@ const Document = forwardRef(function Document(
     externalLinkRel,
     externalLinkTarget,
     file,
+    fileName: downloadFileName,
     highlightEditorColors,
     defaultHighlightColor,
-    defaultPopupAnnotationColor,
+    defaultTextAnnotationColor,
     defaultSquareFillColor,
     defaultSquareOpacity,
     inputRef,
@@ -396,6 +399,8 @@ const Document = forwardRef(function Document(
   const prevOptions = useRef<Options>();
   const [currentPage, setCurrentPage] = useState(1);
   const [canLoadAnnotations, setCanLoadAnnotations] = useState(false);
+  const downloadManager = useRef(new DownloadManager());
+  const [isSaveInProgress, setIsSaveInProgress] = useState(false);
 
   useEffect(
     function initializeEventsRef() {
@@ -643,15 +648,15 @@ const Document = forwardRef(function Document(
   );
 
   useEffect(
-    function updateDefaultPopupAnnotationColor() {
-      if (defaultPopupAnnotationColor && annotationEditorUiManager) {
+    function updatedefaultTextAnnotationColor() {
+      if (defaultTextAnnotationColor && annotationEditorUiManager) {
         annotationEditorUiManager.updateParams(
-          pdfjs.AnnotationEditorParamsType.POPUP_COLOR,
-          defaultPopupAnnotationColor,
+          pdfjs.AnnotationEditorParamsType.TEXT_COLOR,
+          defaultTextAnnotationColor,
         );
       }
     },
-    [defaultPopupAnnotationColor, annotationEditorUiManager],
+    [defaultTextAnnotationColor, annotationEditorUiManager],
   );
 
   useEffect(
@@ -800,6 +805,62 @@ const Document = forwardRef(function Document(
     eventsRefProp.current.findPrevious = findPrevious;
     eventsRefProp.current.onFindBarClosed = onFindBarClosed;
   };
+
+  useEffect(
+    function enableDownload() {
+      if (!(eventsRefProp && pdf)) {
+        return;
+      }
+
+      const url = downloadFileName || 'annotated.pdf';
+      const filename = url;
+
+      const download = async () => {
+        try {
+          const data = await pdf.getData();
+          const blob = new Blob([data], { type: 'application/pdf' });
+
+          await downloadManager.current.download(blob, url, filename);
+        } catch {
+          // When the PDF document isn't ready, or the PDF file is still
+          // downloading, simply download using the URL.
+          await downloadManager.current.downloadUrl(url, filename);
+        }
+      };
+
+      const saveWithAnnotations = async () => {
+        if (isSaveInProgress) {
+          return;
+        }
+
+        setIsSaveInProgress(true);
+
+        try {
+          const data = await pdf.saveDocument();
+          const blob = new Blob([data], { type: 'application/pdf' });
+          await downloadManager.current.download(blob, url, filename);
+        } catch (reason: any) {
+          // When the PDF document isn't ready, or the PDF file is still
+          // downloading, simply fallback to a "regular" download.
+          console.error(`Error when saving the document: ${reason?.message}`);
+          await download();
+        } finally {
+          setIsSaveInProgress(false);
+        }
+      };
+
+      const downloadWithAnnotations = () => {
+        if (pdf?.annotationStorage.size > 0) {
+          saveWithAnnotations();
+        } else {
+          download();
+        }
+      };
+
+      eventsRefProp.current.downloadWithAnnotations = downloadWithAnnotations;
+    },
+    [pdf, isSaveInProgress, eventsRefProp],
+  );
 
   /**
    * Called when a document is read successfully
