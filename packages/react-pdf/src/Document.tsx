@@ -84,6 +84,7 @@ type OnSourceSuccess = () => void;
 export type DocumentProps = {
   annotationEditorMode: number;
   annotationsList?: any;
+  initialLinkNodesList?: any;
   bookmarkDestPageNumber?: any;
   children?: React.ReactNode;
   /**
@@ -170,12 +171,15 @@ export type DocumentProps = {
    */
   noData?: NodeOrRenderer;
   onAnnotationUpdate?: any;
+  onChangeVisibleLinkNodeList?: any;
+  onLinkNodeEvent?: any;
   /**
    * Function called when an outline item or a thumbnail has been clicked. Usually, you would like to use this callback to move the user wherever they requested to.
    *
    * @example ({ dest, pageIndex, pageNumber }) => alert('Clicked an item from page ' + pageNumber + '!')
    */
   onItemClick?: OnItemClick;
+  onLinkNodeReady?: any;
   /**
    * Function called in case of an error while loading a document.
    *
@@ -337,6 +341,7 @@ const getHighlightColorsString = (highlightEditorColors?: HighlightEditorColorsT
 const Document = forwardRef(function Document(
   {
     annotationsList,
+    initialLinkNodesList,
     annotationEditorMode = pdfjs.AnnotationEditorType.DISABLE,
     bookmarkDestPageNumber,
     children,
@@ -357,7 +362,10 @@ const Document = forwardRef(function Document(
     loading = 'Loading PDF…',
     noData = 'No PDF file specified.',
     onAnnotationUpdate,
+    onChangeVisibleLinkNodeList,
+    onLinkNodeEvent,
     onItemClick,
+    onLinkNodeReady,
     onLoadError: onLoadErrorProps,
     onLoadProgress,
     onLoadSuccess: onLoadSuccessProps,
@@ -420,6 +428,24 @@ const Document = forwardRef(function Document(
       });
     }
   }, [globalScale, mainContainerRef]);
+
+  useEffect(
+    function detectAnnotationAndLinkNodeUpdate() {
+      if (!(eventBus && onLinkNodeEvent)) {
+        return;
+      }
+
+      const handleLinkNodeEvent = ({ details }: any) => {
+        onLinkNodeEvent(details);
+      };
+      eventBus.current._on('com_linkNodeForMarginNodeChanged', handleLinkNodeEvent);
+
+      return () => {
+        eventBus.current._off('com_linkNodeForMarginNodeChanged', handleLinkNodeEvent);
+      };
+    },
+    [eventBus, onAnnotationUpdate],
+  );
 
   useEffect(
     function detectAnnotationUpdate() {
@@ -661,13 +687,44 @@ const Document = forwardRef(function Document(
 
   useEffect(
     function loadAnnotations() {
-      if (!canLoadAnnotations) {
+      if (!(canLoadAnnotations && annotationsList)) {
         return;
       }
 
+      // TODO: Is there a case where this can run multiple times?
       annotationEditorUiManager.loadAnnotations({ annotationsList });
     },
-    [canLoadAnnotations],
+    [canLoadAnnotations, annotationsList],
+  );
+
+  useEffect(
+    function loadInitialLinkNodesList() {
+      if (!(canLoadAnnotations && initialLinkNodesList)) {
+        return;
+      }
+
+      // TODO: Is there a case where this can run multiple times?
+      annotationEditorUiManager.parseLinkNodesFromJSON({ linkNodesList: initialLinkNodesList });
+    },
+    [canLoadAnnotations, initialLinkNodesList],
+  );
+
+  useEffect(
+    function bindOnLinkNodeReady() {
+      if (!(onLinkNodeReady && eventBus && annotationEditorUiManager)) {
+        return;
+      }
+
+      eventBus.current._on('com_linkNodeReady', onLinkNodeReady);
+      eventsRefProp.current.linkToLinkNode = (targetId: string) => {
+        annotationEditorUiManager.createLinkNode(targetId);
+      };
+
+      return () => {
+        eventBus.current._off('com_linkNodeReady', onLinkNodeReady);
+      };
+    },
+    [onLinkNodeReady, annotationEditorUiManager],
   );
 
   useEffect(
@@ -805,6 +862,28 @@ const Document = forwardRef(function Document(
     eventsRefProp.current.findPrevious = findPrevious;
     eventsRefProp.current.onFindBarClosed = onFindBarClosed;
   };
+
+  useEffect(
+    function bindMarginNodesEvents() {
+      if (eventsRefProp.current?.onSelectedMarginNodeChange || !annotationEditorUiManager) {
+        return;
+      }
+
+      const onSelectedMarginNodeChange = (id: string) => {
+        annotationEditorUiManager.onLinkNodeTargetChanging({ id });
+      };
+
+      eventsRefProp.current.onSelectedMarginNodeChange = onSelectedMarginNodeChange;
+      if (onChangeVisibleLinkNodeList) {
+        eventBus.current._on('com_visibleLinkNodesChanged', onChangeVisibleLinkNodeList);
+      }
+
+      () => {
+        eventBus.current._off('com_visibleLinkNodesChanged', onChangeVisibleLinkNodeList);
+      };
+    },
+    [annotationEditorUiManager],
+  );
 
   useEffect(
     function enableDownload() {
@@ -982,8 +1061,7 @@ const Document = forwardRef(function Document(
   function registerAnnotationEditorLayer(pageIndex: number, ref: HTMLDivElement) {
     annotationEditorLayers.current[pageIndex] = ref;
     setCanLoadAnnotations(
-      annotationsList &&
-        annotationEditorUiManager &&
+      annotationEditorUiManager &&
         pages.current.length > 0 &&
         pages.current.length == annotationEditorLayers.current.filter(Boolean).length,
     );

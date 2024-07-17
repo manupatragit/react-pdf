@@ -62,6 +62,7 @@ export default function AnnotationEditorLayer() {
     }
   }
 
+  // TODO: Move this to document and call only once
   useEffect(
     function updateAnnotationMode() {
       if (annotationEditorUiManager) {
