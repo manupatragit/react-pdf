@@ -430,6 +430,8 @@ const Page: React.FC<PageProps> = function Page(props) {
     }
   }, [pdfjsInternalScale, setGlobalScale]);
 
+  // TODO: Move this to document/viewer with correct value
+  // TOOD: Track Move tracking of pagenubmer to single source of truth. currently it is done in both state and viewer
   useEffect(
     function updateAnnotationEditorUiManagerPage() {
       if (annotationEditorUiManager) {

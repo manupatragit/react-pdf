@@ -16,7 +16,6 @@ export default function AnnotationEditorLayer() {
 
   const mergedProps = { ...documentContext, ...pageContext };
   const {
-    annotationEditorMode,
     annotationEditorUiManager,
     annotationLayer,
     page,
@@ -61,16 +60,6 @@ export default function AnnotationEditorLayer() {
       registerAnnotationEditorLayer(pageIndex, newAnnotationEditorLayer);
     }
   }
-
-  // TODO: Move this to document and call only once
-  useEffect(
-    function updateAnnotationMode() {
-      if (annotationEditorUiManager) {
-        annotationEditorUiManager.updateMode(annotationEditorMode, null, false);
-      }
-    },
-    [annotationEditorUiManager, annotationEditorMode],
-  );
 
   useEffect(() => {
     if (annotationEditorUiManager && viewport && annotationLayer && textLayerRef && drawLayer) {

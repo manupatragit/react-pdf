@@ -220,10 +220,10 @@
     "@babel/helper-validator-identifier" "^7.24.6"
     to-fast-properties "^2.0.0"
 
-"@commutatus/pdfjs-dist@5.0.23":
-  version "5.0.23"
-  resolved "https://registry.yarnpkg.com/@commutatus/pdfjs-dist/-/pdfjs-dist-5.0.23.tgz#2fd8637d5c6473b8c0a91aa1f770a3896e3b650c"
-  integrity sha512-TGGNKKcrQiQanBnVXvittUbTisOV/5ImeUk43nfsM641LOpMCmpvxhGrn/MelKwwgdQjPuPFY4PL/RotpygQaA==
+"@commutatus/pdfjs-dist@5.0.24":
+  version "5.0.24"
+  resolved "https://registry.yarnpkg.com/@commutatus/pdfjs-dist/-/pdfjs-dist-5.0.24.tgz#b1c8280d7437f4bd2e41d582b92978cb17db5d8f"
+  integrity sha512-kFR3fcPidEKGw8V5hClrR5L+J/qiX7yYFKTFdN2UJG5JJq9B/SDOlD84sVyo8CAf1PaPPGhRzR3jdXmxM8rhag==
   optionalDependencies:
     canvas "^2.11.2"
     path2d-polyfill "^2.0.1"
@@ -1879,7 +1879,7 @@ eslint-module-utils@^2.7.4, eslint-module-utils@^2.8.0:
   dependencies:
     debug "^3.2.7"
 
-eslint-plugin-import@^2.25.0, "eslint-plugin-import@npm:eslint-plugin-i@^2.28.0":
+eslint-plugin-import@^2.25.0:
   version "2.29.1"
   resolved "https://registry.yarnpkg.com/eslint-plugin-i/-/eslint-plugin-i-2.29.1.tgz#97e4a055b6b2040cec0842700dd1d2066773b5a4"
   integrity sha512-ORizX37MelIWLbMyqI7hi8VJMf7A0CskMmYkB+lkCX3aF4pkGV7kwx5bSEb4qx7Yce2rAf9s34HqDRPjGRZPNQ==
