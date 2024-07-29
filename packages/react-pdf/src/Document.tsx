@@ -83,6 +83,7 @@ type OnSourceSuccess = () => void;
 
 export type DocumentProps = {
   annotationEditorMode: number;
+  setAnnotationEditorMode: any;
   annotationsList?: any;
   initialLinkNodesList?: any;
   bookmarkDestPageNumber?: any;
@@ -342,7 +343,8 @@ const Document = forwardRef(function Document(
   {
     annotationsList,
     initialLinkNodesList,
-    annotationEditorMode = pdfjs.AnnotationEditorType.DISABLE,
+    annotationEditorMode = pdfjs.AnnotationEditorType.NONE,
+    setAnnotationEditorMode,
     bookmarkDestPageNumber,
     children,
     className,
@@ -738,6 +740,30 @@ const Document = forwardRef(function Document(
       // TODO: Send 'pagechanging' event
     },
     [onPageChangeProps, currentPage],
+  );
+
+  useEffect(
+    function setupTwoWayAnnotationModeSignal() {
+      // All annotation editor layers have loaded
+      if (!(canLoadAnnotations && setAnnotationEditorMode && annotationEditorUiManager)) {
+        return;
+      }
+
+      eventsRefProp.current.updateMode = (mode: number) => {
+        annotationEditorUiManager.updateMode(mode, null, false);
+      };
+
+      const handler = ({ mode }: any) => {
+        setAnnotationEditorMode(mode);
+      };
+
+      eventBus.current._on('switchannotationeditormode', handler);
+
+      return () => {
+        eventBus.current._off('switchannotationeditormode', handler);
+      };
+    },
+    [canLoadAnnotations, setAnnotationEditorMode, annotationEditorUiManager],
   );
 
   useEffect(
