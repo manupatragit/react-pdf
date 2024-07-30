@@ -86,7 +86,6 @@ export type DocumentProps = {
   setAnnotationEditorMode: any;
   annotationsList?: any;
   initialLinkNodesList?: any;
-  bookmarkDestPageNumber?: any;
   children?: React.ReactNode;
   /**
    * Class name(s) that will be added to rendered element along with the default `react-pdf__Document`.
@@ -345,7 +344,6 @@ const Document = forwardRef(function Document(
     initialLinkNodesList,
     annotationEditorMode = pdfjs.AnnotationEditorType.NONE,
     setAnnotationEditorMode,
-    bookmarkDestPageNumber,
     children,
     className,
     error = 'Failed to load PDF file.',
@@ -799,17 +797,6 @@ const Document = forwardRef(function Document(
   );
 
   useEffect(
-    function moveToBookmarkPageNumber() {
-      if (!bookmarkDestPageNumber) {
-        return;
-      }
-
-      linkService.current.goToPage(bookmarkDestPageNumber);
-    },
-    [bookmarkDestPageNumber],
-  );
-
-  useEffect(
     function updateGlobalParams() {
       if (!(annotationEditorUiManager && eventBus.current && onUpdateGlobalAnnotationParams)) {
         return;
@@ -883,10 +870,15 @@ const Document = forwardRef(function Document(
       eventBus.current.dispatch('findbarclose', { source: 'react-pdf-document' });
     };
 
+    const goToPage = (pageNumber: number) => {
+      linkService.current.goToPage(pageNumber);
+    };
+
     eventsRefProp.current.search = search;
     eventsRefProp.current.findNext = findNext;
     eventsRefProp.current.findPrevious = findPrevious;
     eventsRefProp.current.onFindBarClosed = onFindBarClosed;
+    eventsRefProp.current.goToPage = goToPage;
   };
 
   useEffect(
