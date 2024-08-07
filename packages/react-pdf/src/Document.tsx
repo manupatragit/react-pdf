@@ -170,6 +170,8 @@ export type DocumentProps = {
    * @example {this.renderNoData}
    */
   noData?: NodeOrRenderer;
+  onAddExternalElement?: any;
+  onRemoveExternalElement?: any;
   onAnnotationUpdate?: any;
   onChangeVisibleLinkNodeList?: any;
   onLinkNodeEvent?: any;
@@ -230,7 +232,6 @@ export type DocumentProps = {
    *
    * @example { cMapUrl: '/cmaps/' }
    */
-  onUpdateGlobalAnnotationParams?: any;
   options?: Options;
   /**
    * Rendering mode of the document. Can be `"canvas"`, `"custom"`, `"none"` or `"svg"`. If set to `"custom"`, `customRenderer` must also be provided.
@@ -363,6 +364,8 @@ const Document = forwardRef(function Document(
     loading = 'Loading PDF…',
     noData = 'No PDF file specified.',
     onAnnotationUpdate,
+    onAddExternalElement,
+    onRemoveExternalElement,
     onChangeVisibleLinkNodeList,
     onLinkNodeEvent,
     onSearchMatchCountEvent,
@@ -375,7 +378,6 @@ const Document = forwardRef(function Document(
     onPassword = defaultOnPassword,
     onSourceError: onSourceErrorProps,
     onSourceSuccess: onSourceSuccessProps,
-    onUpdateGlobalAnnotationParams,
     options,
     renderMode,
     rotate,
@@ -465,6 +467,33 @@ const Document = forwardRef(function Document(
       };
     },
     [eventBus, onSearchMatchCountEvent],
+  );
+
+  useEffect(
+    function listenToExternalElementEvents() {
+      if (!(eventBus && onAddExternalElement && onRemoveExternalElement)) {
+        return;
+      }
+
+      const handleAddExternalElement = (args: any) => {
+        onAddExternalElement(args);
+      };
+
+      const handleRemoveExternalElement = (args: any) => {
+        onRemoveExternalElement(args);
+      };
+
+      eventBus.current._on('com_addToolbar', handleAddExternalElement);
+      eventBus.current._on('com_addStickyNoteMenuButton', handleAddExternalElement);
+      eventBus.current._on('com_externalElementRemoved', handleRemoveExternalElement);
+
+      return () => {
+        eventBus.current._off('com_addToolbar', handleAddExternalElement);
+        eventBus.current._off('com_addStickyNoteMenuButton', handleAddExternalElement);
+        eventBus.current._off('com_externalElementRemoved', handleRemoveExternalElement);
+      };
+    },
+    [eventBus, onAddExternalElement],
   );
 
   useEffect(
@@ -816,31 +845,11 @@ const Document = forwardRef(function Document(
     [mainContainerRef, pages],
   );
 
-  useEffect(
-    function updateGlobalParams() {
-      if (!(annotationEditorUiManager && eventBus.current && onUpdateGlobalAnnotationParams)) {
-        return;
-      }
-
-      const handler = ({ params }: any) => {
-        onUpdateGlobalAnnotationParams({ params });
-      };
-
-      eventBus.current._on('com_updateglobalparams', handler);
-
-      return () => {
-        eventBus.current._off('com_updateglobalparams', handler);
-      };
-    },
-    [annotationEditorUiManager],
-  );
-
   function createAnnotationEditorUiManager() {
     const colorPickerOptions = getHighlightColorsString(highlightEditorColors);
     const uiManager = new pdfjs.AnnotationEditorUIManager(
       (mainContainerRef as any).current,
       (mainContainerRef as any).current,
-      null,
       eventBus.current,
       pdf,
       false,
