@@ -259,7 +259,7 @@
     --editor-toolbar-vert-offset: 6px;
     pointer-events: auto;
     position: absolute;
-    box-shadow: var(--editor-toolbar-shadow);
+    box-shadow: 0px 6px 16px 0px #00000014;
 
     &.hidden {
       display: none;
