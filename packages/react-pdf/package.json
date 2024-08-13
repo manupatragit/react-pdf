@@ -67,7 +67,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@commutatus/pdfjs-dist": "5.0.31",
+    "@commutatus/pdfjs-dist": "5.0.32",
     "clsx": "^2.0.0",
     "dequal": "^2.0.3",
     "lodash.debounce": "^4.0.8",
