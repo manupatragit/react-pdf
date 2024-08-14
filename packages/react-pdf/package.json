@@ -1,6 +1,6 @@
 {
   "name": "@commutatus/react-pdf",
-  "version": "8.0.41",
+  "version": "8.0.42",
   "description": "Display PDFs in your React app as easily as if they were images.",
   "type": "module",
   "sideEffects": [
