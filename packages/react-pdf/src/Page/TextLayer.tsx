@@ -214,7 +214,10 @@ export default function TextLayer() {
 
     layer.innerHTML = '';
 
-    const textContentSource = page.streamTextContent({ includeMarkedContent: true });
+    const textContentSource = page.streamTextContent({
+      includeMarkedContent: true,
+      disableNormalization: true,
+    });
 
     const parameters = {
       container: layer,
