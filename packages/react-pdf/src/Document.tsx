@@ -790,11 +790,15 @@ const Document = forwardRef(function Document(
   );
 
   useEffect(
-    function setupTwoWayAnnotationModeSignal() {
+    function bindAnnotationEvents() {
       // All annotation editor layers have loaded
       if (!(canLoadAnnotations && setAnnotationEditorMode && annotationEditorUiManager)) {
         return;
       }
+
+      eventsRefProp.current.getDivForEditor = (apiId: string) => {
+        return annotationEditorUiManager?.getDivForEditor(apiId);
+      };
 
       eventsRefProp.current.updateMode = (mode: number) => {
         annotationEditorUiManager.updateMode(mode, null, false);
