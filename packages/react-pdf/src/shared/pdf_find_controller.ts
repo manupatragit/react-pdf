@@ -22,13 +22,7 @@
 import { binarySearchFirstItem, scrollIntoView } from './ui_utils.js';
 import { getCharacterType, getNormalizeWithNFKC } from './pdf_find_utils.js';
 import pdfjs from '../pdfjs.js';
-
-const FindState = {
-  FOUND: 0,
-  NOT_FOUND: 1,
-  WRAPPED: 2,
-  PENDING: 3,
-};
+import { FindState } from './constants.js';
 
 const FIND_TIMEOUT = 250; // ms
 const MATCH_SCROLL_OFFSET_TOP = -50; // px

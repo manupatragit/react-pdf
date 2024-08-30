@@ -176,6 +176,7 @@ export type DocumentProps = {
   onChangeVisibleLinkNodeList?: any;
   onLinkNodeEvent?: any;
   onSearchMatchCountEvent?: any;
+  onUpdateSearchState?: any;
   /**
    * Function called when an outline item or a thumbnail has been clicked. Usually, you would like to use this callback to move the user wherever they requested to.
    *
@@ -369,6 +370,7 @@ const Document = forwardRef(function Document(
     onChangeVisibleLinkNodeList,
     onLinkNodeEvent,
     onSearchMatchCountEvent,
+    onUpdateSearchState,
     onItemClick,
     onLinkNodeReady,
     onLoadError: onLoadErrorProps,
@@ -453,17 +455,20 @@ const Document = forwardRef(function Document(
 
   useEffect(
     function detectSearchMatchCount() {
-      if (!(eventBus && onSearchMatchCountEvent)) {
+      if (!(eventBus && onSearchMatchCountEvent && onUpdateSearchState)) {
         return;
       }
 
       const handleSearchMatchCountEvent = ({ matchesCount }: any) => {
         onSearchMatchCountEvent(matchesCount);
       };
+
       eventBus.current._on('updatefindmatchescount', handleSearchMatchCountEvent);
+      eventBus.current._on('updatefindcontrolstate', onUpdateSearchState);
 
       return () => {
         eventBus.current._off('updatefindmatchescount', handleSearchMatchCountEvent);
+        eventBus.current._off('updatefindcontrolstate', onUpdateSearchState);
       };
     },
     [eventBus, onSearchMatchCountEvent],

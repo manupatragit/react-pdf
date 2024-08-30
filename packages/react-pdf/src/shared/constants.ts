@@ -57,3 +57,10 @@ export const PDF_ROLE_TO_HTML_ROLE = {
 };
 
 export const HEADING_PATTERN = /^H(\d+)$/;
+
+export const FindState = {
+  FOUND: 0,
+  NOT_FOUND: 1,
+  WRAPPED: 2,
+  PENDING: 3,
+};
