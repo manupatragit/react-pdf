@@ -281,6 +281,7 @@ class Viewer {
     // First, check if custom handling of onItemClick was provided
     if (this.onItemClick) {
       this.onItemClick({ dest, pageIndex, pageNumber });
+      this.currentPageNumber = pageNumber;
       return;
     }
 
@@ -290,6 +291,7 @@ class Viewer {
     if (page) {
       // Scroll to the page automatically
       page.scrollIntoView();
+      this.currentPageNumber = pageNumber;
       return;
     }
 
@@ -415,6 +417,8 @@ const Document = forwardRef(function Document(
   const [canLoadAnnotations, setCanLoadAnnotations] = useState(false);
   const downloadManager = useRef(new DownloadManager());
   const [isSaveInProgress, setIsSaveInProgress] = useState(false);
+  // TODO: Remove this workaround
+  const [hasZoomChanged, setHasZoomChanged] = useState({ changed: false, targetPageNumber: 1 });
 
   useEffect(
     function initializeEventsRef() {
@@ -854,6 +858,33 @@ const Document = forwardRef(function Document(
     [mainContainerRef, pages],
   );
 
+  useEffect(
+    function startTrackZoomProgress() {
+      if (
+        !linkService.current.pdfViewer ||
+        linkService.current?.page < 2 ||
+        hasZoomChanged.changed
+      ) {
+        return;
+      }
+
+      setHasZoomChanged({ changed: true, targetPageNumber: linkService.current.page });
+    },
+    [width],
+  );
+
+  useEffect(
+    function onEndZoom() {
+      if (!hasZoomChanged.changed) {
+        return;
+      }
+
+      setHasZoomChanged({ changed: false, targetPageNumber: linkService.current.page });
+      linkService.current.goToPage(hasZoomChanged.targetPageNumber);
+    },
+    [hasZoomChanged],
+  );
+
   function createAnnotationEditorUiManager() {
     const colorPickerOptions = getHighlightColorsString(highlightEditorColors);
     const uiManager = new pdfjs.AnnotationEditorUIManager(
@@ -909,7 +940,10 @@ const Document = forwardRef(function Document(
     };
 
     const goToPage = (pageNumber: number) => {
-      linkService.current.goToPage(pageNumber);
+      if (pageNumber > 0 && pageNumber <= linkService?.current?.pagesCount) {
+        linkService.current.goToPage(pageNumber);
+        setCurrentPage(pageNumber);
+      }
     };
 
     eventsRefProp.current.search = search;
