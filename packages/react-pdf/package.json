@@ -1,6 +1,6 @@
 {
   "name": "@commutatus/react-pdf",
-  "version": "8.0.54",
+  "version": "8.0.55",
   "description": "Display PDFs in your React app as easily as if they were images.",
   "type": "module",
   "sideEffects": [
@@ -67,7 +67,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@commutatus/pdfjs-dist": "5.0.41",
+    "@commutatus/pdfjs-dist": "5.0.42",
     "clsx": "^2.0.0",
     "dequal": "^2.0.3",
     "lodash.debounce": "^4.0.8",
