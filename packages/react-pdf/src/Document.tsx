@@ -44,7 +44,7 @@ import { eventProps, isClassName, isFile, isRef } from './shared/propTypes.js';
 //@ts-ignore
 import { EventBus } from './shared/eventBus.js';
 
-import type { PDFDocumentProxy } from '@commutatus/pdfjs-dist';
+import type { PDFDocumentProxy, PDFPageProxy } from '@commutatus/pdfjs-dist';
 import type { EventProps } from 'make-event-props';
 import type {
   ClassName,
@@ -400,7 +400,6 @@ const Document = forwardRef(function Document(
   const eventBus = useRef(new EventBus());
   const defaultInputRef = useRef<HTMLDivElement>(null);
   const mainContainerRef = inputRef || defaultInputRef;
-  const [globalScale, setGlobalScale] = useState<null | number>(null);
   const linkService = useRef(new LinkService());
   const findController = useRef(
     new PDFFindController({
@@ -419,6 +418,9 @@ const Document = forwardRef(function Document(
   const [isSaveInProgress, setIsSaveInProgress] = useState(false);
   // TODO: Remove this workaround
   const [hasZoomChanged, setHasZoomChanged] = useState({ changed: false, targetPageNumber: 1 });
+  // TODO: Fix this workaround and use a single scale value
+  const [scaleState, setScaleState] = useState({ scale: 1, pdfjsInternalScale: 1 });
+  const firstPage = useRef<PDFPageProxy | null>(null);
 
   useEffect(
     function initializeEventsRef() {
@@ -429,15 +431,33 @@ const Document = forwardRef(function Document(
     [eventsRefProp],
   );
 
-  useEffect(() => {
-    if (globalScale && (mainContainerRef as any)?.current) {
+  useEffect(
+    function updateScaleValues() {
+      if (!width || !canLoadAnnotations || !firstPage.current) {
+        return;
+      }
+
+      // Be default, we'll render page at 100% * scale width.
+      let pageScale = 1,
+        pdfjsInternalScale = 1;
+
+      // Calculate the scale of the page so it could be of desired width.
+      // Use first page for reference assuming all pages have same scaling
+      const viewport = firstPage.current.getViewport({ scale: 1, rotation: rotate as number });
+      pageScale = width / viewport.width;
+      // pdf.js internally multiplies by this value
+      pdfjsInternalScale = pageScale / pdfjs.PixelsPerInch.PDF_TO_CSS_UNITS;
+
       eventBus.current.dispatch('scalechanging', {
         source: (mainContainerRef as any).current,
-        scale: globalScale,
+        scale: pdfjsInternalScale,
         presetValue: 'auto',
       });
-    }
-  }, [globalScale, mainContainerRef]);
+
+      setScaleState({ scale: pageScale, pdfjsInternalScale });
+    },
+    [width, canLoadAnnotations],
+  );
 
   useEffect(
     function detectAnnotationAndLinkNodeUpdate() {
@@ -1144,8 +1164,11 @@ const Document = forwardRef(function Document(
 
   useEffect(setupLinkService, [externalLinkRel, externalLinkTarget]);
 
-  function registerPage(pageIndex: number, ref: HTMLDivElement) {
+  function registerPage(pageIndex: number, ref: HTMLDivElement, pageProxy?: PDFPageProxy | false) {
     pages.current[pageIndex] = ref;
+    if (pageIndex === 0 && pageProxy) {
+      firstPage.current = pageProxy;
+    }
   }
 
   function registerAnnotationEditorLayer(pageIndex: number, ref: HTMLDivElement) {
@@ -1171,7 +1194,7 @@ const Document = forwardRef(function Document(
       registerPage,
       renderMode,
       rotate,
-      setGlobalScale,
+      ...scaleState,
     }),
     [
       annotationEditorUiManager,
@@ -1181,7 +1204,7 @@ const Document = forwardRef(function Document(
       pdf,
       renderMode,
       rotate,
-      setGlobalScale,
+      scaleState,
     ],
   );
 
@@ -1197,10 +1220,6 @@ const Document = forwardRef(function Document(
           const pageProps: PageProps = {
             pageNumber,
           };
-
-          if (width) {
-            pageProps.width = width;
-          }
 
           return <Page key={pageNumber} {...pageProps} />;
         })}

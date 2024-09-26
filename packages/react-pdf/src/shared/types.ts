@@ -49,7 +49,11 @@ export type OnLoadProgressArgs = {
   total: number;
 };
 
-export type RegisterPage = (pageIndex: number, ref: HTMLDivElement) => void;
+export type RegisterPage = (
+  pageIndex: number,
+  ref: HTMLDivElement,
+  pageProxy?: PDFPageProxy | false,
+) => void;
 export type RegisterAnnotationEditorLayer = (pageIndex: number, ref: HTMLDivElement) => void;
 
 export type RenderMode = 'canvas' | 'custom' | 'none' | 'svg';
@@ -139,7 +143,6 @@ export type DocumentContextType = {
   registerAnnotationEditorLayer: RegisterAnnotationEditorLayer;
   renderMode?: RenderMode;
   rotate?: number | null;
-  setGlobalScale: Dispatch<SetStateAction<number | null>>;
 } | null;
 
 export type PageContextType = {

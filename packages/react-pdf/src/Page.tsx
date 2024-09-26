@@ -302,12 +302,7 @@ export type PageProps = {
    * @example 0.5
    */
   scale?: number;
-  /**
-   * Page width. If neither `height` nor `width` are defined, page will be rendered at the size defined in PDF. If you define `width` and `height` at the same time, `height` will be ignored. If you define `width` and `scale` at the same time, the width will be multiplied by a given factor.
-   *
-   * @example 300
-   */
-  width?: number;
+  pdfjsInternalScale?: number;
 } & EventProps<PageCallback | false | undefined>;
 
 /**
@@ -359,9 +354,8 @@ const Page: React.FC<PageProps> = function Page(props) {
     renderMode = 'canvas',
     renderTextLayer: renderTextLayerProps = true,
     rotate: rotateProps,
-    scale: scaleProps = defaultScale,
-    setGlobalScale,
-    width,
+    scale = defaultScale,
+    pdfjsInternalScale = defaultScale,
     ...otherProps
   } = mergedProps;
 
@@ -383,34 +377,6 @@ const Page: React.FC<PageProps> = function Page(props) {
 
   const rotate = rotateProps ?? (page ? page.rotate : null);
 
-  const { scale, pdfjsInternalScale } = useMemo(() => {
-    if (!page) {
-      // TODO: Fix this workaround and use a single scale value
-      return { scale: null, pdfjsInternalScale: null };
-    }
-
-    // Be default, we'll render page at 100% * scale width.
-    let pageScale = 1,
-      pdfjsInternalScale = 1;
-
-    // Passing scale explicitly null would cause the page not to render
-    const scaleWithDefault = scaleProps ?? defaultScale;
-
-    // If width/height is defined, calculate the scale of the page so it could be of desired width.
-    if (width || height) {
-      const viewport = page.getViewport({ scale: 1, rotation: rotate as number });
-      if (width) {
-        pageScale = width / viewport.width;
-        // pdf.js internally multiplies by this value
-        pdfjsInternalScale = pageScale / pdfjs.PixelsPerInch.PDF_TO_CSS_UNITS;
-      } else if (height) {
-        pageScale = height / viewport.height;
-      }
-    }
-
-    return { scale: scaleWithDefault * pageScale, pdfjsInternalScale };
-  }, [height, page, rotate, scaleProps, width]);
-
   const drawLayer = useMemo(() => {
     return new pdfjs.DrawLayer({ pageIndex: pageIndex });
   }, [pageIndex]);
@@ -423,12 +389,6 @@ const Page: React.FC<PageProps> = function Page(props) {
     },
     [drawLayer],
   );
-
-  useEffect(() => {
-    if (pdfjsInternalScale && setGlobalScale) {
-      setGlobalScale(pdfjsInternalScale);
-    }
-  }, [pdfjsInternalScale, setGlobalScale]);
 
   // TODO: Move this to document/viewer with correct value
   // TOOD: Track Move tracking of pagenubmer to single source of truth. currently it is done in both state and viewer
@@ -460,7 +420,7 @@ const Page: React.FC<PageProps> = function Page(props) {
         return;
       }
 
-      registerPage(pageIndex, pageElement.current);
+      registerPage(pageIndex, pageElement.current, pageState?.value);
     }
   }
 
@@ -746,7 +706,7 @@ Page.propTypes = {
   renderTextLayer: PropTypes.bool,
   rotate: isRotate,
   scale: PropTypes.number,
-  width: PropTypes.number,
+  pdfjsInternalScale: PropTypes.number,
 };
 
 export default Page;
