@@ -64,8 +64,12 @@ export default function AnnotationEditorLayer() {
   useEffect(() => {
     if (annotationEditorUiManager && viewport && annotationLayer && textLayerRef && drawLayer) {
       if (annotationEditorLayer) {
+        const newTextLayer = { div: (textLayerRef as any)?.current };
         const clonedViewport = viewport.clone({ dontFlip: true });
-        (annotationEditorLayer as any).update({ viewport: clonedViewport });
+        (annotationEditorLayer as any).update({
+          viewport: clonedViewport,
+          textLayer: newTextLayer,
+        });
       } else {
         getAnnotationEditorLayer();
       }
