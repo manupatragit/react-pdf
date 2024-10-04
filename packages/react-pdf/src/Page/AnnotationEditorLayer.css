@@ -119,6 +119,8 @@
 .squareEditor {
   /* Enables interaction even when annotation editor layer is disabled */
   pointer-events: auto;
+  /* Required for accurate resizing calculations */
+  box-sizing: content-box;
 }
 
 .textEditor {
