@@ -198,7 +198,7 @@
   &.selectedEditor {
     border: var(--focus-outline);
     outline: var(--focus-outline-around);
-
+    z-index: 99 !important;
     &::before {
       /*
          This is a workaround for the lack of support for stripes(...) (see
@@ -602,6 +602,7 @@
     }
 
     &.selectedEditor {
+      z-index: 99 !important;
       .internal {
         cursor: pointer;
       }
