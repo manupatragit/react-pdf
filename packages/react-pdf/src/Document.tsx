@@ -290,7 +290,7 @@ class Viewer {
 
     if (page) {
       // Scroll to the page automatically
-      page.scrollIntoView();
+      page.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
       this.currentPageNumber = pageNumber;
       return;
     }
