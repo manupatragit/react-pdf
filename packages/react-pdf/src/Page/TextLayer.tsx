@@ -45,6 +45,8 @@ export default function TextLayer() {
     rotate,
     scale,
     textLayerRef: layerElement,
+    registerDivForGlobalSelectionListener,
+    unregisterDivForGlobalSelectionListener,
   } = mergedProps;
 
   invariant(page, 'Attempted to load page text content, but no page was specified.');
@@ -172,6 +174,9 @@ export default function TextLayer() {
       if (onRenderTextLayerError) {
         onRenderTextLayerError(error);
       }
+      if (layerElement) {
+        unregisterDivForGlobalSelectionListener?.((layerElement as any).current);
+      }
     },
     [onRenderTextLayerError],
   );
@@ -235,6 +240,7 @@ export default function TextLayer() {
         const end = document.createElement('div');
         end.className = 'endOfContent';
         layer.append(end);
+        registerDivForGlobalSelectionListener?.(layer, end);
         endElement.current = end;
 
         const layerChildren = layer.querySelectorAll('[role="presentation"]');

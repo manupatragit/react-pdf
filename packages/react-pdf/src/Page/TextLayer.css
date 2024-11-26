@@ -40,12 +40,17 @@
   position: absolute;
   text-align: initial;
   inset: 0;
-  overflow: hidden;
+  overflow: clip;
   line-height: 1;
   text-size-adjust: none;
   forced-color-adjust: none;
   transform-origin: 0 0;
-  z-index: 2;
+  z-index: 0;
+
+  > :not(.markedContent),
+  .markedContent span:not(.markedContent) {
+    z-index: 1;
+  }
 }
 
 .textLayer :is(span, br) {
@@ -104,7 +109,7 @@
   display: block;
   position: absolute;
   inset: 100% 0 0;
-  z-index: -1;
+  z-index: 0;
   cursor: default;
   user-select: none;
 }

@@ -143,6 +143,8 @@ export type DocumentContextType = {
   registerAnnotationEditorLayer: RegisterAnnotationEditorLayer;
   renderMode?: RenderMode;
   rotate?: number | null;
+  registerDivForGlobalSelectionListener: (div: HTMLDivElement, end: HTMLDivElement) => void;
+  unregisterDivForGlobalSelectionListener: (div: HTMLDivElement) => void;
 } | null;
 
 export type PageContextType = {
