@@ -220,10 +220,10 @@
     "@babel/helper-validator-identifier" "^7.24.6"
     to-fast-properties "^2.0.0"
 
-"@commutatus/pdfjs-dist@5.0.53":
-  version "5.0.53"
-  resolved "https://registry.yarnpkg.com/@commutatus/pdfjs-dist/-/pdfjs-dist-5.0.53.tgz#7c9561e98fca480b4768885c725aaf5eb6877138"
-  integrity sha512-MmONfny2G60MxXxwQbvLXoRWcRhXHFW8HyYxWLtSPz80znqdJuDph+gRsduVgwQGrJn/Jj8SSysde7YC59mcRA==
+"@commutatus/pdfjs-dist@5.0.54":
+  version "5.0.54"
+  resolved "https://registry.yarnpkg.com/@commutatus/pdfjs-dist/-/pdfjs-dist-5.0.54.tgz#2a27bcfb10440246fa1abcc149da1c2d0bdf8555"
+  integrity sha512-AssOzX7/FrAFLx549Pi9UFoKW1/QjA8mHB9usvBHGkFX2pxDvJwbUc6bB03lYj02a1q7PfdgPOqYnq3fuzbAHA==
   optionalDependencies:
     canvas "^2.11.2"
     path2d-polyfill "^2.0.1"
