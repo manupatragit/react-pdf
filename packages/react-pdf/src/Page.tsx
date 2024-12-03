@@ -664,6 +664,8 @@ const Page: React.FC<PageProps> = function Page(props) {
         position: 'relative',
         minWidth: 'min-content',
         minHeight: 'min-content',
+        maxWidth: 'min-content',
+        maxHeight: 'min-content',
       }}
       {...eventProps}
     >
