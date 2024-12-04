@@ -126,7 +126,6 @@ export type DocumentProps = {
    * @example { url: 'https://example.com/sample.pdf' }
    */
   file?: File;
-  fileName?: string;
   /**
    * List of colors to be used with highlight editor
    *
@@ -356,7 +355,6 @@ const Document = forwardRef(function Document(
     externalLinkRel,
     externalLinkTarget,
     file,
-    fileName: downloadFileName,
     highlightEditorColors,
     defaultHighlightColor,
     defaultTextAnnotationColor,
@@ -1003,8 +1001,7 @@ const Document = forwardRef(function Document(
         return;
       }
 
-      const url = downloadFileName || 'annotated.pdf';
-      const filename = url;
+      let url: string, filename: string;
 
       const download = async () => {
         try {
@@ -1040,7 +1037,10 @@ const Document = forwardRef(function Document(
         }
       };
 
-      const downloadWithAnnotations = () => {
+      const downloadWithAnnotations = (downloadFileName?: string) => {
+        url = downloadFileName || 'annotated.pdf';
+        filename = url;
+
         if (pdf?.annotationStorage.size > 0) {
           saveWithAnnotations();
         } else {
