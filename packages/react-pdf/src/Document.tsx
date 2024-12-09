@@ -70,6 +70,7 @@ import type {
 import Page, { type PageProps } from './Page.js';
 import { PDFFindController } from './shared/pdf_find_controller.js';
 import { DownloadManager } from './shared/download_manager.js';
+import { scrollIntoView } from 'seamless-scroll-polyfill';
 
 const { PDFDataRangeTransport } = pdfjs;
 
@@ -289,7 +290,11 @@ class Viewer {
 
     if (page) {
       // Scroll to the page automatically
-      page.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+      scrollIntoView(page, {
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'nearest',
+      });
       this.currentPageNumber = pageNumber;
       return;
     }
