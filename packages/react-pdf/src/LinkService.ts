@@ -152,7 +152,7 @@ export default class LinkService implements IPDFLinkService {
     this.goToDestination(dest);
   }
 
-  goToPage(pageNumber: number) {
+  goToPage(pageNumber: number, topOffset?: number) {
     const pageIndex = pageNumber - 1;
 
     invariant(this.pdfViewer, 'PDF viewer is not initialized.');
@@ -165,6 +165,7 @@ export default class LinkService implements IPDFLinkService {
     this.pdfViewer.scrollPageIntoView({
       pageIndex,
       pageNumber,
+      topOffset,
     });
   }
 

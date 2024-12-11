@@ -275,7 +275,7 @@ class Viewer {
 
   // Handling jumping to internal links target
   scrollPageIntoView(args: ScrollPageIntoViewArgs) {
-    const { dest, pageNumber, pageIndex = pageNumber - 1 } = args;
+    const { dest, pageNumber, pageIndex = pageNumber - 1, topOffset } = args;
     this.currentPageNumber = 1;
 
     // First, check if custom handling of onItemClick was provided
@@ -289,12 +289,17 @@ class Viewer {
     const page = this.pages.current[pageIndex];
 
     if (page) {
-      // Scroll to the page automatically
-      scrollIntoView(page, {
-        behavior: 'smooth',
-        block: 'nearest',
-        inline: 'nearest',
-      });
+      if (topOffset && page.parentElement) {
+        // Use parent/document's scrollBy since scrollIntoView doesn't support offset
+        page.parentElement.scrollBy(0, topOffset);
+      } else {
+        scrollIntoView(page, {
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'nearest',
+        });
+      }
+
       this.currentPageNumber = pageNumber;
       return;
     }
@@ -420,7 +425,15 @@ const Document = forwardRef(function Document(
   const downloadManager = useRef(new DownloadManager());
   const [isSaveInProgress, setIsSaveInProgress] = useState(false);
   // TODO: Remove this workaround
-  const [hasZoomChanged, setHasZoomChanged] = useState({ changed: false, targetPageNumber: 1 });
+  const [hasZoomChanged, setHasZoomChanged] = useState<{
+    changed: boolean;
+    targetPageNumber: number;
+    prevPageHeight?: number;
+    prevPageTop?: number;
+  }>({
+    changed: false,
+    targetPageNumber: 1,
+  });
   // TODO: Fix this workaround and use a single scale value
   const [scaleState, setScaleState] = useState({ scale: 1, pdfjsInternalScale: 1 });
   const firstPage = useRef<PDFPageProxy | null>(null);
@@ -893,7 +906,21 @@ const Document = forwardRef(function Document(
         return;
       }
 
-      setHasZoomChanged({ changed: true, targetPageNumber: linkService.current.page });
+      const currentPageNumber = linkService.current.page;
+      let prevPageHeight, prevPageTop;
+      const pageDiv = pages.current[currentPageNumber - 1];
+      if (pageDiv) {
+        const boundingRect = pageDiv.getBoundingClientRect();
+        prevPageHeight = boundingRect.height;
+        prevPageTop = boundingRect.top;
+      }
+
+      setHasZoomChanged({
+        changed: true,
+        targetPageNumber: currentPageNumber,
+        prevPageHeight,
+        prevPageTop,
+      });
     },
     [width],
   );
@@ -904,8 +931,26 @@ const Document = forwardRef(function Document(
         return;
       }
 
-      setHasZoomChanged({ changed: false, targetPageNumber: linkService.current.page });
-      linkService.current.goToPage(hasZoomChanged.targetPageNumber);
+      setHasZoomChanged({
+        changed: false,
+        targetPageNumber: linkService.current.page,
+        prevPageHeight: undefined,
+        prevPageTop: undefined,
+      });
+      const { targetPageNumber, prevPageHeight, prevPageTop } = hasZoomChanged;
+      let topOffset;
+
+      if (prevPageHeight && prevPageTop) {
+        const pageDiv = pages.current[targetPageNumber - 1];
+        if (pageDiv) {
+          const boundingRect = pageDiv.getBoundingClientRect();
+          const zoomFactor = boundingRect.height / prevPageHeight;
+          const pageTop = zoomFactor * prevPageTop;
+          topOffset = boundingRect.top - pageTop;
+        }
+      }
+
+      linkService.current.goToPage(targetPageNumber, topOffset);
     },
     [hasZoomChanged],
   );

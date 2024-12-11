@@ -62,6 +62,7 @@ export type ScrollPageIntoViewArgs = {
   dest?: ResolvedDest;
   pageIndex?: number;
   pageNumber: number;
+  topOffset?: number;
 };
 
 export type Source =
