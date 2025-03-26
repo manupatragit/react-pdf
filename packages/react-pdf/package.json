@@ -1,5 +1,5 @@
 {
-  "name": "@manupatra/react-pdf",
+  "name": "manureaderpdf",
   "version": "8.0.76",
   "description": "Display PDFs in your React app as easily as if they were images.",
   "type": "module",
