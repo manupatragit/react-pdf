@@ -49,4 +49,4 @@ jobs:
         run: npm publish package.tgz --tag next --provenance
         working-directory: packages/react-pdf
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN_MKV }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
