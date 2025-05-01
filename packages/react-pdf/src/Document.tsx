@@ -137,6 +137,8 @@ export type DocumentProps = {
   defaultTextAnnotationColor?: string;
   defaultSquareFillColor?: string;
   defaultSquareOpacity?: string;
+  defaultInkFillColor?: string;
+  defaultInkOpacity?: string;
   /**
    * The path used to prefix the src attributes of annotation SVGs.
    *
@@ -370,6 +372,8 @@ const Document = forwardRef(function Document(
     defaultTextAnnotationColor,
     defaultSquareFillColor,
     defaultSquareOpacity,
+    defaultInkFillColor,
+    defaultInkOpacity,
     inputRef,
     imageResourcesPath,
     loading = 'Loading PDF…',
@@ -767,6 +771,30 @@ const Document = forwardRef(function Document(
       }
     },
     [defaultSquareFillColor, annotationEditorUiManager],
+  );
+
+  useEffect(
+    function updateDefaultInkOpacity() {
+      if (defaultInkOpacity && annotationEditorUiManager) {
+        annotationEditorUiManager.updateParams(
+          pdfjs.AnnotationEditorParamsType.INK_OPACITY,
+          defaultInkOpacity,
+        );
+      }
+    },
+    [defaultInkOpacity, annotationEditorUiManager],
+  );
+
+  useEffect(
+    function updateDefaultInkFillColor() {
+      if (defaultInkFillColor && annotationEditorUiManager) {
+        annotationEditorUiManager.updateParams(
+          pdfjs.AnnotationEditorParamsType.INK_COLOR,
+          defaultInkFillColor,
+        );
+      }
+    },
+    [defaultInkFillColor, annotationEditorUiManager],
   );
 
   useEffect(
