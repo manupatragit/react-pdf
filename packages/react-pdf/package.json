@@ -1,6 +1,6 @@
 {
   "name": "manureaderpdf",
-  "version": "8.0.76",
+  "version": "8.0.77",
   "description": "Display PDFs in your React app as easily as if they were images.",
   "type": "module",
   "sideEffects": [
@@ -67,7 +67,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "pdfjs-dist": "git+https://github.com/manupatragit/pdfjs-dist.git",
+    "@commutatus/pdfjs-dist": "npm:manupdfjs-dist@5.0.56",
     "clsx": "^2.0.0",
     "dequal": "^2.0.3",
     "lodash.debounce": "^4.0.8",
