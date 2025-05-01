@@ -1,6 +1,6 @@
 {
   "name": "manureaderpdf",
-  "version": "8.0.77",
+  "version": "8.0.78",
   "description": "Display PDFs in your React app as easily as if they were images.",
   "type": "module",
   "sideEffects": [
