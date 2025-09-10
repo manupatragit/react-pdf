@@ -647,8 +647,8 @@ const Page: React.FC<PageProps> = function Page(props) {
         ['--scale-factor' as string]: `${scale}`,
         backgroundColor: canvasBackground || 'white',
         position: 'relative',
-        minWidth: 'min-content',
-        minHeight: 'min-content',
+        // minWidth: 'min-content',
+        // minHeight: 'min-content',
       }}
       {...eventProps}
     >
