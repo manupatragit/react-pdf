@@ -662,10 +662,10 @@ const Page: React.FC<PageProps> = function Page(props) {
         ['--scale-factor' as string]: `${(pdfjsInternalScale || 1) * pdfjs.PixelsPerInch.PDF_TO_CSS_UNITS}`,
         backgroundColor: canvasBackground || 'white',
         position: 'relative',
-        minWidth: 'min-content',
-        minHeight: 'min-content',
-        maxWidth: 'min-content',
-        maxHeight: 'min-content',
+        // minWidth: 'min-content',
+        // minHeight: 'min-content',
+        // maxWidth: 'min-content',
+        // maxHeight: 'min-content',
       }}
       {...eventProps}
     >
