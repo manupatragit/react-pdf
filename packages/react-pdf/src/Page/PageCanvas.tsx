@@ -16,7 +16,7 @@ import {
   makePageCallback,
 } from '../shared/utils.js';
 
-import type { RenderParameters } from 'pdfjs-dist/types/src/display/api.js';
+import type { RenderParameters } from '@commutatus/pdfjs-dist/types/src/display/api.js';
 
 const ANNOTATION_MODE = pdfjs.AnnotationMode;
 

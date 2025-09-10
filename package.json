@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "react-pdf monorepo",
   "type": "module",
+  "private": true,
   "workspaces": [
     "packages/*",
     "test"

@@ -7,12 +7,15 @@ import React, {
   useImperativeHandle,
   useMemo,
   useRef,
+  useState,
+  type MutableRefObject,
 } from 'react';
 import PropTypes from 'prop-types';
 import makeEventProps from 'make-event-props';
 import makeCancellable from 'make-cancellable-promise';
 import clsx from 'clsx';
 import invariant from 'tiny-invariant';
+import debounce from 'lodash.debounce';
 import warning from 'warning';
 import { dequal } from 'dequal';
 import pdfjs from './pdfjs.js';
@@ -32,13 +35,16 @@ import {
   isBlob,
   isBrowser,
   isDataURI,
+  isPageInVew,
   loadFromFile,
 } from './shared/utils.js';
 
 import useResolver from './shared/hooks/useResolver.js';
 import { eventProps, isClassName, isFile, isRef } from './shared/propTypes.js';
+//@ts-ignore
+import { EventBus } from './shared/eventBus.js';
 
-import type { PDFDocumentProxy } from 'pdfjs-dist';
+import type { PDFDocumentProxy, PDFPageProxy } from '@commutatus/pdfjs-dist';
 import type { EventProps } from 'make-event-props';
 import type {
   ClassName,
@@ -46,6 +52,7 @@ import type {
   ExternalLinkRel,
   ExternalLinkTarget,
   File,
+  HighlightEditorColorsType,
   ImageResourcesPath,
   NodeOrRenderer,
   OnDocumentLoadError,
@@ -60,6 +67,10 @@ import type {
   ScrollPageIntoViewArgs,
   Source,
 } from './shared/types.js';
+import Page, { type PageProps } from './Page.js';
+import { PDFFindController } from './shared/pdf_find_controller.js';
+import { DownloadManager } from './shared/download_manager.js';
+import { scrollIntoView } from 'seamless-scroll-polyfill';
 
 const { PDFDataRangeTransport } = pdfjs;
 
@@ -72,6 +83,10 @@ type OnSourceError = OnError;
 type OnSourceSuccess = () => void;
 
 export type DocumentProps = {
+  annotationEditorMode: number;
+  setAnnotationEditorMode: any;
+  annotationsList?: any;
+  initialLinkNodesList?: any;
   children?: React.ReactNode;
   /**
    * Class name(s) that will be added to rendered element along with the default `react-pdf__Document`.
@@ -99,6 +114,7 @@ export type DocumentProps = {
    * Link target for external links rendered in annotations.
    */
   externalLinkTarget?: ExternalLinkTarget;
+  eventsRef?: any;
   /**
    * What PDF should be displayed.
    *
@@ -111,6 +127,18 @@ export type DocumentProps = {
    * @example { url: 'https://example.com/sample.pdf' }
    */
   file?: File;
+  /**
+   * List of colors to be used with highlight editor
+   *
+   * @example [{ name: 'blue', hex: '#324ea8' }, { name: 'red', hex: '#a83242' }]
+   */
+  highlightEditorColors?: HighlightEditorColorsType;
+  defaultHighlightColor?: string;
+  defaultTextAnnotationColor?: string;
+  defaultSquareFillColor?: string;
+  defaultSquareOpacity?: string;
+  defaultInkFillColor?: string;
+  defaultInkOpacity?: string;
   /**
    * The path used to prefix the src attributes of annotation SVGs.
    *
@@ -144,12 +172,20 @@ export type DocumentProps = {
    * @example {this.renderNoData}
    */
   noData?: NodeOrRenderer;
+  onAddExternalElement?: any;
+  onRemoveExternalElement?: any;
+  onAnnotationUpdate?: any;
+  onChangeVisibleLinkNodeList?: any;
+  onLinkNodeEvent?: any;
+  onSearchMatchCountEvent?: any;
+  onUpdateSearchState?: any;
   /**
    * Function called when an outline item or a thumbnail has been clicked. Usually, you would like to use this callback to move the user wherever they requested to.
    *
    * @example ({ dest, pageIndex, pageNumber }) => alert('Clicked an item from page ' + pageNumber + '!')
    */
   onItemClick?: OnItemClick;
+  onLinkNodeReady?: any;
   /**
    * Function called in case of an error while loading a document.
    *
@@ -168,6 +204,7 @@ export type DocumentProps = {
    * @example (pdf) => alert('Loaded a file with ' + pdf.numPages + ' pages!')
    */
   onLoadSuccess?: OnDocumentLoadSuccess;
+  onPageChange?: any;
   /**
    * Function called when a password-protected PDF is loaded.
    *
@@ -214,7 +251,67 @@ export type DocumentProps = {
    * @example 90
    */
   rotate?: number | null;
+  /**
+   * Page width. If neither `height` nor `width` are defined, page will be rendered at the size defined in PDF. If you define `width` and `height` at the same time, `height` will be ignored. If you define `width` and `scale` at the same time, the width will be multiplied by a given factor.
+   *
+   * @example 300
+   */
+  width?: number;
 } & EventProps<DocumentCallback | false | undefined>;
+
+class Viewer {
+  currentPageNumber = 1;
+  onItemClick: OnItemClick | undefined;
+  pages: MutableRefObject<HTMLDivElement[]>;
+
+  constructor({
+    onItemClick,
+    pages,
+  }: {
+    onItemClick?: OnItemClick;
+    pages: MutableRefObject<HTMLDivElement[]>;
+  }) {
+    this.onItemClick = onItemClick;
+    this.pages = pages;
+  }
+
+  // Handling jumping to internal links target
+  scrollPageIntoView(args: ScrollPageIntoViewArgs) {
+    const { dest, pageNumber, pageIndex = pageNumber - 1, topOffset } = args;
+    this.currentPageNumber = 1;
+
+    // First, check if custom handling of onItemClick was provided
+    if (this.onItemClick) {
+      this.onItemClick({ dest, pageIndex, pageNumber });
+      this.currentPageNumber = pageNumber;
+      return;
+    }
+
+    // If not, try to look for target page within the <Document>.
+    const page = this.pages.current[pageIndex];
+
+    if (page) {
+      if (topOffset && page.parentElement) {
+        // Use parent/document's scrollBy since scrollIntoView doesn't support offset
+        page.parentElement.scrollBy(0, topOffset);
+      } else {
+        scrollIntoView(page, {
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'nearest',
+        });
+      }
+
+      this.currentPageNumber = pageNumber;
+      return;
+    }
+
+    warning(
+      false,
+      `An internal link leading to page ${pageNumber} was clicked, but neither <Document> was provided with onItemClick nor it was able to find the page within itself. Either provide onItemClick to <Document> and handle navigating by yourself or ensure that all pages are rendered within <Document>.`,
+    );
+  }
+}
 
 const defaultOnPassword: OnPassword = (callback, reason) => {
   switch (reason) {
@@ -242,31 +339,65 @@ function isParameterObject(file: File): file is Source {
   );
 }
 
+const getHighlightColorsString = (highlightEditorColors?: HighlightEditorColorsType) => {
+  const colorsString = highlightEditorColors
+    ? highlightEditorColors
+        .map(({ name, hex }) => {
+          return name + '=' + hex;
+        })
+        .join(',')
+    : 'yellow=#FFFF98,green=#53FFBC,blue=#80EBFF,pink=#FFCBE6,red=#FF4F5F';
+
+  return colorsString;
+};
+
 /**
  * Loads a document passed using `file` prop.
  */
 const Document = forwardRef(function Document(
   {
+    annotationsList,
+    initialLinkNodesList,
+    annotationEditorMode = pdfjs.AnnotationEditorType.NONE,
+    setAnnotationEditorMode,
     children,
     className,
     error = 'Failed to load PDF file.',
+    eventsRef: eventsRefProp,
     externalLinkRel,
     externalLinkTarget,
     file,
+    highlightEditorColors,
+    defaultHighlightColor,
+    defaultTextAnnotationColor,
+    defaultSquareFillColor,
+    defaultSquareOpacity,
+    defaultInkFillColor,
+    defaultInkOpacity,
     inputRef,
     imageResourcesPath,
     loading = 'Loading PDF…',
     noData = 'No PDF file specified.',
+    onAnnotationUpdate,
+    onAddExternalElement,
+    onRemoveExternalElement,
+    onChangeVisibleLinkNodeList,
+    onLinkNodeEvent,
+    onSearchMatchCountEvent,
+    onUpdateSearchState,
     onItemClick,
+    onLinkNodeReady,
     onLoadError: onLoadErrorProps,
     onLoadProgress,
     onLoadSuccess: onLoadSuccessProps,
+    onPageChange: onPageChangeProps,
     onPassword = defaultOnPassword,
     onSourceError: onSourceErrorProps,
     onSourceSuccess: onSourceSuccessProps,
     options,
     renderMode,
     rotate,
+    width,
     ...otherProps
   }: DocumentProps,
   ref,
@@ -275,13 +406,171 @@ const Document = forwardRef(function Document(
   const { value: source, error: sourceError } = sourceState;
   const [pdfState, pdfDispatch] = useResolver<PDFDocumentProxy>();
   const { value: pdf, error: pdfError } = pdfState;
-
+  const [annotationEditorUiManagerState, annotationEditorUiManagerDispatch] = useResolver<any>();
+  const { value: annotationEditorUiManager, error: annotationEditorUiManagerError } =
+    annotationEditorUiManagerState;
+  const eventBus = useRef(new EventBus());
+  const defaultInputRef = useRef<HTMLDivElement>(null);
+  const mainContainerRef = inputRef || defaultInputRef;
   const linkService = useRef(new LinkService());
-
+  const findController = useRef(
+    new PDFFindController({
+      linkService: linkService.current,
+      eventBus: eventBus.current,
+      updateMatchesCountOnProgress: true,
+    }),
+  );
   const pages = useRef<HTMLDivElement[]>([]);
-
+  const annotationEditorLayers = useRef<any>([]);
   const prevFile = useRef<File>();
   const prevOptions = useRef<Options>();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [canLoadAnnotations, setCanLoadAnnotations] = useState(false);
+  const downloadManager = useRef(new DownloadManager());
+  const [isSaveInProgress, setIsSaveInProgress] = useState(false);
+  // TODO: Remove this workaround
+  const [hasZoomChanged, setHasZoomChanged] = useState<{
+    changed: boolean;
+    targetPageNumber: number;
+    prevPageHeight?: number;
+    prevPageTop?: number;
+  }>({
+    changed: false,
+    targetPageNumber: 1,
+  });
+  // TODO: Fix this workaround and use a single scale value
+  const [scaleState, setScaleState] = useState({ scale: 1, pdfjsInternalScale: 1 });
+  const firstPage = useRef<PDFPageProxy | null>(null);
+  const textLayersForSelection = useRef(new Map());
+  const selectionChangeAbortController = useRef<AbortController | null>(null);
+
+  useEffect(
+    function initializeEventsRef() {
+      if (eventsRefProp) {
+        eventsRefProp.current = {};
+      }
+    },
+    [eventsRefProp],
+  );
+
+  useEffect(
+    function updateScaleValues() {
+      if (!width || !canLoadAnnotations || !firstPage.current) {
+        return;
+      }
+
+      // Be default, we'll render page at 100% * scale width.
+      let pageScale = 1,
+        pdfjsInternalScale = 1;
+
+      // Calculate the scale of the page so it could be of desired width.
+      // Use first page for reference assuming all pages have same scaling
+      const viewport = firstPage.current.getViewport({ scale: 1, rotation: rotate as number });
+      pageScale = width / viewport.width;
+      // pdf.js internally multiplies by this value
+      pdfjsInternalScale = pageScale / pdfjs.PixelsPerInch.PDF_TO_CSS_UNITS;
+
+      eventBus.current.dispatch('scalechanging', {
+        source: (mainContainerRef as any).current,
+        scale: pdfjsInternalScale,
+        presetValue: 'auto',
+      });
+
+      setScaleState({ scale: pageScale, pdfjsInternalScale });
+    },
+    [width, canLoadAnnotations],
+  );
+
+  useEffect(
+    function detectAnnotationAndLinkNodeUpdate() {
+      if (!(eventBus && onLinkNodeEvent)) {
+        return;
+      }
+
+      const handleLinkNodeEvent = ({ details }: any) => {
+        onLinkNodeEvent(details);
+      };
+      eventBus.current._on('com_linkNodeForMarginNodeChanged', handleLinkNodeEvent);
+
+      return () => {
+        eventBus.current._off('com_linkNodeForMarginNodeChanged', handleLinkNodeEvent);
+      };
+    },
+    [eventBus, onAnnotationUpdate],
+  );
+
+  useEffect(
+    function detectSearchMatchCount() {
+      if (!(eventBus && onSearchMatchCountEvent && onUpdateSearchState)) {
+        return;
+      }
+
+      const handleSearchMatchCountEvent = ({ matchesCount }: any) => {
+        onSearchMatchCountEvent(matchesCount);
+      };
+
+      eventBus.current._on('updatefindmatchescount', handleSearchMatchCountEvent);
+      eventBus.current._on('updatefindcontrolstate', onUpdateSearchState);
+
+      return () => {
+        eventBus.current._off('updatefindmatchescount', handleSearchMatchCountEvent);
+        eventBus.current._off('updatefindcontrolstate', onUpdateSearchState);
+      };
+    },
+    [eventBus, onSearchMatchCountEvent],
+  );
+
+  useEffect(
+    function listenToExternalElementEvents() {
+      if (!(eventBus && onAddExternalElement && onRemoveExternalElement)) {
+        return;
+      }
+
+      const handleAddExternalElement = (args: any) => {
+        onAddExternalElement(args);
+      };
+
+      const handleRemoveExternalElement = (args: any) => {
+        onRemoveExternalElement(args);
+      };
+
+      eventBus.current._on('com_addToolbar', handleAddExternalElement);
+      eventBus.current._on('com_addStickyNoteMenuButton', handleAddExternalElement);
+      eventBus.current._on('com_externalElementRemoved', handleRemoveExternalElement);
+
+      return () => {
+        eventBus.current._off('com_addToolbar', handleAddExternalElement);
+        eventBus.current._off('com_addStickyNoteMenuButton', handleAddExternalElement);
+        eventBus.current._off('com_externalElementRemoved', handleRemoveExternalElement);
+      };
+    },
+    [eventBus, onAddExternalElement],
+  );
+
+  useEffect(
+    function detectAnnotationUpdate() {
+      if (!(eventBus && onAnnotationUpdate)) {
+        return;
+      }
+
+      const onAnnotationDelete = (...args: any) => {
+        onAnnotationUpdate(...args, { type: 'delete' });
+      };
+
+      const onAnnotationUpdateWrapper = (...args: any) => {
+        onAnnotationUpdate(...args, { type: 'update' });
+      };
+
+      eventBus.current._on('com_annotationupdated', onAnnotationUpdateWrapper);
+      eventBus.current._on('com_annotationdeleted', onAnnotationDelete);
+
+      return () => {
+        eventBus.current._off('com_annotationupdated', onAnnotationUpdateWrapper);
+        eventBus.current._off('com_annotationdeleted', onAnnotationDelete);
+      };
+    },
+    [eventBus, onAnnotationUpdate],
+  );
 
   useEffect(() => {
     if (file && file !== prevFile.current && isParameterObject(file)) {
@@ -306,32 +595,7 @@ const Document = forwardRef(function Document(
     }
   }, [options]);
 
-  const viewer = useRef({
-    // Handling jumping to internal links target
-    scrollPageIntoView: (args: ScrollPageIntoViewArgs) => {
-      const { dest, pageNumber, pageIndex = pageNumber - 1 } = args;
-
-      // First, check if custom handling of onItemClick was provided
-      if (onItemClick) {
-        onItemClick({ dest, pageIndex, pageNumber });
-        return;
-      }
-
-      // If not, try to look for target page within the <Document>.
-      const page = pages.current[pageIndex];
-
-      if (page) {
-        // Scroll to the page automatically
-        page.scrollIntoView();
-        return;
-      }
-
-      warning(
-        false,
-        `An internal link leading to page ${pageNumber} was clicked, but neither <Document> was provided with onItemClick nor it was able to find the page within itself. Either provide onItemClick to <Document> and handle navigating by yourself or ensure that all pages are rendered within <Document>.`,
-      );
-    },
-  });
+  const viewer = useRef(new Viewer({ onItemClick, pages }));
 
   useImperativeHandle(
     ref,
@@ -392,6 +656,7 @@ const Document = forwardRef(function Document(
 
     // File is PDFDataRangeTransport
     if (file instanceof PDFDataRangeTransport) {
+      // @ts-ignore
       return { range: file };
     }
 
@@ -472,6 +737,504 @@ const Document = forwardRef(function Document(
     [source],
   );
 
+  useEffect(
+    function updateDefaultHighlightColor() {
+      if (defaultHighlightColor && annotationEditorUiManager) {
+        annotationEditorUiManager.updateParams(
+          pdfjs.AnnotationEditorParamsType.HIGHLIGHT_COLOR,
+          defaultHighlightColor,
+        );
+      }
+    },
+    [defaultHighlightColor, annotationEditorUiManager],
+  );
+
+  useEffect(
+    function updateDefaultSquareOpacity() {
+      if (defaultSquareOpacity && annotationEditorUiManager) {
+        annotationEditorUiManager.updateParams(
+          pdfjs.AnnotationEditorParamsType.SQUARE_OPACITY,
+          defaultSquareOpacity,
+        );
+      }
+    },
+    [defaultSquareOpacity, annotationEditorUiManager],
+  );
+
+  useEffect(
+    function updateDefaultSquareFillColor() {
+      if (defaultSquareFillColor && annotationEditorUiManager) {
+        annotationEditorUiManager.updateParams(
+          pdfjs.AnnotationEditorParamsType.SQUARE_COLOR,
+          defaultSquareFillColor,
+        );
+      }
+    },
+    [defaultSquareFillColor, annotationEditorUiManager],
+  );
+
+  useEffect(
+    function updateDefaultInkOpacity() {
+      if (defaultInkOpacity && annotationEditorUiManager) {
+        annotationEditorUiManager.updateParams(
+          pdfjs.AnnotationEditorParamsType.INK_OPACITY,
+          defaultInkOpacity,
+        );
+      }
+    },
+    [defaultInkOpacity, annotationEditorUiManager],
+  );
+
+  useEffect(
+    function updateDefaultInkFillColor() {
+      if (defaultInkFillColor && annotationEditorUiManager) {
+        annotationEditorUiManager.updateParams(
+          pdfjs.AnnotationEditorParamsType.INK_COLOR,
+          defaultInkFillColor,
+        );
+      }
+    },
+    [defaultInkFillColor, annotationEditorUiManager],
+  );
+
+  useEffect(
+    function updatedefaultTextAnnotationColor() {
+      if (defaultTextAnnotationColor && annotationEditorUiManager) {
+        annotationEditorUiManager.updateParams(
+          pdfjs.AnnotationEditorParamsType.TEXT_COLOR,
+          defaultTextAnnotationColor,
+        );
+      }
+    },
+    [defaultTextAnnotationColor, annotationEditorUiManager],
+  );
+
+  useEffect(
+    function loadAnnotations() {
+      if (!(canLoadAnnotations && annotationsList)) {
+        return;
+      }
+
+      // TODO: Is there a case where this can run multiple times?
+      annotationEditorUiManager.loadAnnotations({ annotationsList });
+    },
+    [canLoadAnnotations, annotationsList],
+  );
+
+  useEffect(
+    function loadInitialLinkNodesList() {
+      if (!(canLoadAnnotations && initialLinkNodesList)) {
+        return;
+      }
+
+      // TODO: Is there a case where this can run multiple times?
+      annotationEditorUiManager.parseLinkNodesFromJSON({ linkNodesList: initialLinkNodesList });
+    },
+    [canLoadAnnotations, initialLinkNodesList],
+  );
+
+  useEffect(
+    function bindOnLinkNodeReady() {
+      if (!(onLinkNodeReady && eventBus && annotationEditorUiManager)) {
+        return;
+      }
+
+      eventBus.current._on('com_linkNodeReady', onLinkNodeReady);
+      eventsRefProp.current.linkToLinkNode = (targetId: string) => {
+        annotationEditorUiManager.createLinkNode(targetId);
+      };
+
+      return () => {
+        eventBus.current._off('com_linkNodeReady', onLinkNodeReady);
+      };
+    },
+    [onLinkNodeReady, annotationEditorUiManager],
+  );
+
+  useEffect(
+    function signalPageChange() {
+      viewer.current.currentPageNumber = currentPage;
+
+      if (onPageChangeProps) {
+        onPageChangeProps(currentPage);
+      }
+
+      // TODO: Send 'pagechanging' event
+    },
+    [onPageChangeProps, currentPage],
+  );
+
+  useEffect(
+    function bindAnnotationEvents() {
+      // All annotation editor layers have loaded
+      if (!(canLoadAnnotations && setAnnotationEditorMode && annotationEditorUiManager)) {
+        return;
+      }
+
+      eventsRefProp.current.getDivForEditor = (apiId: string) => {
+        return annotationEditorUiManager?.getDivForEditor(apiId);
+      };
+
+      eventsRefProp.current.updateMode = (mode: number) => {
+        annotationEditorUiManager.updateMode(mode, null, false);
+      };
+
+      const handler = ({ mode }: any) => {
+        setAnnotationEditorMode(mode);
+      };
+
+      eventBus.current._on('switchannotationeditormode', handler);
+
+      return () => {
+        eventBus.current._off('switchannotationeditormode', handler);
+      };
+    },
+    [canLoadAnnotations, setAnnotationEditorMode, annotationEditorUiManager],
+  );
+
+  useEffect(
+    function attachScrollHandler() {
+      if (!(mainContainerRef && pages)) {
+        return;
+      }
+
+      const detectCurrentPageOnScroll = debounce(() => {
+        if (!((mainContainerRef as any) && pages.current?.length)) {
+          return;
+        }
+
+        for (let i = 0; i < pages.current?.length; i++) {
+          const page = pages.current[i];
+          if (isPageInVew((mainContainerRef as any).current.scrollTop, page)) {
+            setCurrentPage(i + 1);
+            return;
+          }
+        }
+      }, 1000);
+
+      (mainContainerRef as any).current.addEventListener('scroll', detectCurrentPageOnScroll);
+
+      return () => {
+        (mainContainerRef as any)?.current?.removeEventListener(
+          'scroll',
+          detectCurrentPageOnScroll,
+        );
+      };
+    },
+    [mainContainerRef, pages],
+  );
+
+  useEffect(
+    function startTrackZoomProgress() {
+      if (
+        !linkService.current.pdfViewer ||
+        linkService.current?.page < 2 ||
+        hasZoomChanged.changed
+      ) {
+        return;
+      }
+
+      const currentPageNumber = linkService.current.page;
+      let prevPageHeight, prevPageTop;
+      const pageDiv = pages.current[currentPageNumber - 1];
+      if (pageDiv) {
+        const boundingRect = pageDiv.getBoundingClientRect();
+        prevPageHeight = boundingRect.height;
+        prevPageTop = boundingRect.top;
+      }
+
+      setHasZoomChanged({
+        changed: true,
+        targetPageNumber: currentPageNumber,
+        prevPageHeight,
+        prevPageTop,
+      });
+    },
+    [width],
+  );
+
+  useEffect(
+    function onEndZoom() {
+      if (!hasZoomChanged.changed) {
+        return;
+      }
+
+      setHasZoomChanged({
+        changed: false,
+        targetPageNumber: linkService.current.page,
+        prevPageHeight: undefined,
+        prevPageTop: undefined,
+      });
+      const { targetPageNumber, prevPageHeight, prevPageTop } = hasZoomChanged;
+      let topOffset;
+
+      if (prevPageHeight && prevPageTop) {
+        const pageDiv = pages.current[targetPageNumber - 1];
+        if (pageDiv) {
+          const boundingRect = pageDiv.getBoundingClientRect();
+          const zoomFactor = boundingRect.height / prevPageHeight;
+          const pageTop = zoomFactor * prevPageTop;
+          topOffset = boundingRect.top - pageTop;
+        }
+      }
+
+      linkService.current.goToPage(targetPageNumber, topOffset);
+    },
+    [hasZoomChanged],
+  );
+
+  function createAnnotationEditorUiManager() {
+    const colorPickerOptions = getHighlightColorsString(highlightEditorColors);
+    const uiManager = new pdfjs.AnnotationEditorUIManager(
+      (mainContainerRef as any).current,
+      (mainContainerRef as any).current,
+      eventBus.current,
+      pdf,
+      false,
+      colorPickerOptions,
+    );
+
+    eventBus.current._on('switchannotationeditorparams', ({ type, value }: any) => {
+      uiManager.updateParams(type, value);
+    });
+
+    annotationEditorUiManagerDispatch({ type: 'RESOLVE', value: uiManager });
+  }
+
+  const enableSearch = (document: PDFDocumentProxy) => {
+    if (!(eventsRefProp && document)) {
+      return;
+    }
+
+    findController.current.setDocument(document);
+
+    const dispatchSearchEvent = (searchString: string, type: string = '', findPrev = false) => {
+      eventBus.current.dispatch('find', {
+        source: 'react-pdf-document',
+        type,
+        query: searchString || '',
+        caseSensitive: false,
+        entireWord: false,
+        highlightAll: true,
+        findPrevious: findPrev,
+        matchDiacritics: false,
+      });
+    };
+
+    const search = (searchTerm: string) => {
+      dispatchSearchEvent(searchTerm);
+    };
+
+    const findNext = (searchTerm: string) => {
+      dispatchSearchEvent(searchTerm, 'again', false);
+    };
+
+    const findPrevious = (searchTerm: string) => {
+      dispatchSearchEvent(searchTerm, 'again', true);
+    };
+
+    const onFindBarClosed = () => {
+      eventBus.current.dispatch('findbarclose', { source: 'react-pdf-document' });
+    };
+
+    const goToPage = (pageNumber: number) => {
+      if (pageNumber > 0 && pageNumber <= linkService?.current?.pagesCount) {
+        linkService.current.goToPage(pageNumber);
+        setCurrentPage(pageNumber);
+      }
+    };
+
+    eventsRefProp.current.search = search;
+    eventsRefProp.current.findNext = findNext;
+    eventsRefProp.current.findPrevious = findPrevious;
+    eventsRefProp.current.onFindBarClosed = onFindBarClosed;
+    eventsRefProp.current.goToPage = goToPage;
+  };
+
+  useEffect(
+    function bindMarginNodesEvents() {
+      if (eventsRefProp.current?.onSelectedMarginNodeChange || !annotationEditorUiManager) {
+        return;
+      }
+
+      const onSelectedMarginNodeChange = (id: string) => {
+        annotationEditorUiManager.onLinkNodeTargetChanging({ id });
+      };
+
+      eventsRefProp.current.onSelectedMarginNodeChange = onSelectedMarginNodeChange;
+      if (onChangeVisibleLinkNodeList) {
+        eventBus.current._on('com_visibleLinkNodesChanged', onChangeVisibleLinkNodeList);
+      }
+
+      () => {
+        eventBus.current._off('com_visibleLinkNodesChanged', onChangeVisibleLinkNodeList);
+      };
+    },
+    [annotationEditorUiManager],
+  );
+
+  useEffect(
+    function enableDownload() {
+      if (!(eventsRefProp && pdf)) {
+        return;
+      }
+
+      let url: string, filename: string;
+
+      const download = async () => {
+        try {
+          const data = await pdf.getData();
+          const blob = new Blob([data], { type: 'application/pdf' });
+
+          await downloadManager.current.download(blob, url, filename);
+        } catch {
+          // When the PDF document isn't ready, or the PDF file is still
+          // downloading, simply download using the URL.
+          await downloadManager.current.downloadUrl(url, filename);
+        }
+      };
+
+      const saveWithAnnotations = async () => {
+        if (isSaveInProgress) {
+          return;
+        }
+
+        setIsSaveInProgress(true);
+
+        try {
+          const data = await pdf.saveDocument();
+          const blob = new Blob([data], { type: 'application/pdf' });
+          await downloadManager.current.download(blob, url, filename);
+        } catch (reason: any) {
+          // When the PDF document isn't ready, or the PDF file is still
+          // downloading, simply fallback to a "regular" download.
+          console.error(`Error when saving the document: ${reason?.message}`);
+          await download();
+        } finally {
+          setIsSaveInProgress(false);
+        }
+      };
+
+      const downloadWithAnnotations = (downloadFileName?: string) => {
+        url = downloadFileName || 'annotated.pdf';
+        filename = url;
+
+        if (pdf?.annotationStorage.size > 0) {
+          saveWithAnnotations();
+        } else {
+          download();
+        }
+      };
+
+      eventsRefProp.current.downloadWithAnnotations = downloadWithAnnotations;
+    },
+    [pdf, isSaveInProgress, eventsRefProp],
+  );
+
+  function unregisterDivForGlobalSelectionListener(textLayerDiv: HTMLDivElement) {
+    textLayersForSelection.current.delete(textLayerDiv);
+
+    if (textLayersForSelection.current.size === 0) {
+      selectionChangeAbortController.current?.abort();
+      selectionChangeAbortController.current = null;
+    }
+  }
+
+  function registerDivForGlobalSelectionListener(div: HTMLDivElement, end: HTMLDivElement) {
+    textLayersForSelection.current.set(div, end);
+
+    if (selectionChangeAbortController.current) {
+      // document-level event listeners already installed
+      return;
+    }
+    selectionChangeAbortController.current = new AbortController();
+
+    const reset = (end: HTMLDivElement, textLayer: HTMLDivElement) => {
+      end.classList.remove('active');
+    };
+
+    document.addEventListener(
+      'pointerup',
+      () => {
+        textLayersForSelection.current.forEach(reset);
+      },
+      { signal: selectionChangeAbortController.current.signal },
+    );
+
+    let isFirefox, prevRange: Range;
+
+    document.addEventListener(
+      'selectionchange',
+      () => {
+        const selection = document.getSelection();
+        if (!selection || selection.rangeCount === 0) {
+          textLayersForSelection.current.forEach(reset);
+          return;
+        }
+
+        // Even though the spec says that .rangeCount should be 0 or 1, Firefox
+        // creates multiple ranges when selecting across multiple pages.
+        // Make sure to collect all the .textLayer elements where the selection
+        // is happening.
+        const activeTextLayers = new Set();
+        for (let i = 0; i < selection.rangeCount; i++) {
+          const range = selection.getRangeAt(i);
+          for (const textLayerDiv of textLayersForSelection.current.keys()) {
+            if (!activeTextLayers.has(textLayerDiv) && range.intersectsNode(textLayerDiv)) {
+              activeTextLayers.add(textLayerDiv);
+            }
+          }
+        }
+
+        for (const [textLayerDiv, endDiv] of textLayersForSelection.current) {
+          if (activeTextLayers.has(textLayerDiv)) {
+            endDiv.classList.add('active');
+          } else {
+            reset(endDiv, textLayerDiv);
+          }
+        }
+
+        isFirefox ??=
+          getComputedStyle(textLayersForSelection.current.values().next().value).getPropertyValue(
+            '-moz-user-select',
+          ) === 'none';
+
+        if (!isFirefox) {
+          // In non-Firefox browsers, when hovering over an empty space (thus,
+          // on .endOfContent), the selection will expand to cover all the
+          // text between the current selection and .endOfContent. By moving
+          // .endOfContent to right after (or before, depending on which side
+          // of the selection the user is moving), we limit the selection jump
+          // to at most cover the entirety of the <span> where the selection
+          // is being modified.
+          const range = selection.getRangeAt(0);
+          const modifyStart =
+            prevRange &&
+            (range.compareBoundaryPoints(Range.END_TO_END, prevRange) === 0 ||
+              range.compareBoundaryPoints(Range.START_TO_END, prevRange) === 0);
+          let anchor = modifyStart ? range.startContainer : range.endContainer;
+          if (anchor.parentNode && anchor.nodeType === Node.TEXT_NODE) {
+            anchor = anchor.parentNode;
+          }
+
+          if (anchor.parentElement) {
+            const parentTextLayer: HTMLDivElement | null =
+              anchor.parentElement.closest('.textLayer');
+            const endDiv = textLayersForSelection.current.get(parentTextLayer);
+            if (endDiv && parentTextLayer) {
+              endDiv.style.width = parentTextLayer.style.width;
+              endDiv.style.height = parentTextLayer.style.height;
+              anchor.parentElement.insertBefore(endDiv, modifyStart ? anchor : anchor.nextSibling);
+            }
+          }
+
+          prevRange = range.cloneRange();
+        }
+      },
+      { signal: selectionChangeAbortController.current.signal },
+    );
+  }
+
   /**
    * Called when a document is read successfully
    */
@@ -486,7 +1249,10 @@ const Document = forwardRef(function Document(
     }
 
     pages.current = new Array(pdf.numPages);
+    annotationEditorLayers.current = new Array(pdf.numPages);
     linkService.current.setDocument(pdf);
+    createAnnotationEditorUiManager();
+    enableSearch(pdf);
   }
 
   /**
@@ -533,10 +1299,10 @@ const Document = forwardRef(function Document(
     const loadingTask = destroyable;
 
     loadingTask.promise
-      .then((nextPdf) => {
+      .then((nextPdf: any) => {
         pdfDispatch({ type: 'RESOLVE', value: nextPdf });
       })
-      .catch((error) => {
+      .catch((error: any) => {
         if (loadingTask.destroyed) {
           return;
         }
@@ -582,32 +1348,69 @@ const Document = forwardRef(function Document(
 
   useEffect(setupLinkService, [externalLinkRel, externalLinkTarget]);
 
-  function registerPage(pageIndex: number, ref: HTMLDivElement) {
+  function registerPage(pageIndex: number, ref: HTMLDivElement, pageProxy?: PDFPageProxy | false) {
     pages.current[pageIndex] = ref;
+    if (pageIndex === 0 && pageProxy) {
+      firstPage.current = pageProxy;
+    }
   }
 
-  function unregisterPage(pageIndex: number) {
-    delete pages.current[pageIndex];
+  function registerAnnotationEditorLayer(pageIndex: number, ref: HTMLDivElement) {
+    annotationEditorLayers.current[pageIndex] = ref;
+    setCanLoadAnnotations(
+      annotationEditorUiManager &&
+        pages.current.length > 0 &&
+        pages.current.length == annotationEditorLayers.current.filter(Boolean).length,
+    );
   }
 
   const childContext = useMemo(
     () => ({
+      annotationEditorUiManager,
+      annotationEditorMode,
+      eventBus: eventBus.current,
+      findController: findController.current,
       imageResourcesPath,
       linkService: linkService.current,
       onItemClick,
       pdf,
+      registerAnnotationEditorLayer,
       registerPage,
       renderMode,
       rotate,
-      unregisterPage,
+      registerDivForGlobalSelectionListener,
+      unregisterDivForGlobalSelectionListener,
+      ...scaleState,
     }),
-    [imageResourcesPath, onItemClick, pdf, renderMode, rotate],
+    [
+      annotationEditorUiManager,
+      annotationEditorMode,
+      imageResourcesPath,
+      onItemClick,
+      pdf,
+      renderMode,
+      rotate,
+      scaleState,
+    ],
   );
 
   const eventProps = useMemo(() => makeEventProps(otherProps, () => pdf), [otherProps, pdf]);
 
   function renderChildren() {
-    return <DocumentContext.Provider value={childContext}>{children}</DocumentContext.Provider>;
+    const pagesList = new Array(pages.current.length).fill(0);
+
+    return (
+      <DocumentContext.Provider value={childContext}>
+        {pagesList.map((_, pageIndex) => {
+          const pageNumber = pageIndex + 1;
+          const pageProps: PageProps = {
+            pageNumber,
+          };
+
+          return <Page key={pageNumber} {...pageProps} />;
+        })}
+      </DocumentContext.Provider>
+    );
   }
 
   function renderContent() {
@@ -631,7 +1434,7 @@ const Document = forwardRef(function Document(
   return (
     <div
       className={clsx('react-pdf__Document', className)}
-      ref={inputRef}
+      ref={mainContainerRef}
       style={{
         ['--scale-factor' as string]: '1',
       }}
@@ -651,6 +1454,7 @@ Document.propTypes = {
   error: isFunctionOrNode,
   externalLinkRel: PropTypes.string,
   externalLinkTarget: PropTypes.oneOf(['_self', '_blank', '_parent', '_top'] as const),
+  //@ts-ignore
   file: isFile,
   imageResourcesPath: PropTypes.string,
   inputRef: isRef,

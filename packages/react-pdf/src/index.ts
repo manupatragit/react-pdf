@@ -17,6 +17,7 @@ export type { PageProps } from './Page.js';
 export type { ThumbnailProps } from './Thumbnail.js';
 
 import { displayWorkerWarning } from './shared/utils.js';
+import { FindState } from './shared/constants.js';
 
 displayWorkerWarning();
 
@@ -32,4 +33,5 @@ export {
   useOutlineContext,
   usePageContext,
   PasswordResponses,
+  FindState,
 };

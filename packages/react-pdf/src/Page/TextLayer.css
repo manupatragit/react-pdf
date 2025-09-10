@@ -40,12 +40,17 @@
   position: absolute;
   text-align: initial;
   inset: 0;
-  overflow: hidden;
+  overflow: clip;
   line-height: 1;
   text-size-adjust: none;
   forced-color-adjust: none;
   transform-origin: 0 0;
-  z-index: 2;
+  z-index: 3;
+
+  > :not(.markedContent),
+  .markedContent span:not(.markedContent) {
+    z-index: 4;
+  }
 }
 
 .textLayer :is(span, br) {
@@ -65,10 +70,13 @@
 }
 
 .textLayer .highlight {
+  --highlight-bg-color: rgb(180 0 170 / 100%);
+  --highlight-selected-bg-color: rgb(132, 8, 125);
   margin: -1px;
   padding: 1px;
   background-color: var(--highlight-bg-color);
   border-radius: 4px;
+  color: #fff;
 }
 
 .textLayer .highlight.appended {
@@ -89,6 +97,7 @@
 
 .textLayer .highlight.selected {
   background-color: var(--highlight-selected-bg-color);
+  border: 3px solid #7cb0f2;
 }
 
 /* Avoids https://github.com/mozilla/pdf.js/issues/13840 in Chrome */
@@ -100,7 +109,7 @@
   display: block;
   position: absolute;
   inset: 100% 0 0;
-  z-index: -1;
+  z-index: 3;
   cursor: default;
   user-select: none;
 }

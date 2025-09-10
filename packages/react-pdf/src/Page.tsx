@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import makeCancellable from 'make-cancellable-promise';
 import makeEventProps from 'make-event-props';
@@ -32,7 +32,7 @@ import {
   isRotate,
 } from './shared/propTypes.js';
 
-import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
+import type { PDFDocumentProxy, PDFPageProxy } from '@commutatus/pdfjs-dist';
 import type { EventProps } from 'make-event-props';
 import type {
   ClassName,
@@ -56,6 +56,8 @@ import type {
   PageCallback,
   RenderMode,
 } from './shared/types.js';
+import pdfjs from './pdfjs.js';
+import AnnotationEditorLayer from './Page/AnnotationEditorLayer.js';
 
 const defaultScale = 1;
 
@@ -300,13 +302,7 @@ export type PageProps = {
    * @example 0.5
    */
   scale?: number;
-  unregisterPage?: undefined;
-  /**
-   * Page width. If neither `height` nor `width` are defined, page will be rendered at the size defined in PDF. If you define `width` and `height` at the same time, `height` will be ignored. If you define `width` and `scale` at the same time, the width will be multiplied by a given factor.
-   *
-   * @example 300
-   */
-  width?: number;
+  pdfjsInternalScale?: number;
 } & EventProps<PageCallback | false | undefined>;
 
 /**
@@ -321,6 +317,8 @@ const Page: React.FC<PageProps> = function Page(props) {
   const {
     _className = 'react-pdf__Page',
     _enableRegisterUnregisterPage = true,
+    annotationEditorUiManager,
+    annotationEditorMode,
     canvasBackground,
     canvasRef,
     children,
@@ -356,15 +354,17 @@ const Page: React.FC<PageProps> = function Page(props) {
     renderMode = 'canvas',
     renderTextLayer: renderTextLayerProps = true,
     rotate: rotateProps,
-    scale: scaleProps = defaultScale,
-    unregisterPage,
-    width,
+    scale = defaultScale,
+    pdfjsInternalScale = defaultScale,
     ...otherProps
   } = mergedProps;
 
   const [pageState, pageDispatch] = useResolver<PDFPageProxy>();
   const { value: page, error: pageError } = pageState;
   const pageElement = useRef<HTMLDivElement>(null);
+  const [annotationLayer, setAnnotationLayer] = useState(null);
+  const textLayerRef = useRef<HTMLDivElement>(null);
+  const annotationLayerRendered = Boolean(annotationLayer);
 
   invariant(
     pdf,
@@ -377,44 +377,29 @@ const Page: React.FC<PageProps> = function Page(props) {
 
   const rotate = rotateProps ?? (page ? page.rotate : null);
 
-  const scale = useMemo(() => {
-    if (!page) {
-      return null;
-    }
+  const drawLayer = useMemo(() => {
+    return new pdfjs.DrawLayer({ pageIndex: pageIndex });
+  }, [pageIndex]);
 
-    // Be default, we'll render page at 100% * scale width.
-    let pageScale = 1;
-
-    // Passing scale explicitly null would cause the page not to render
-    const scaleWithDefault = scaleProps ?? defaultScale;
-
-    // If width/height is defined, calculate the scale of the page so it could be of desired width.
-    if (width || height) {
-      const viewport = page.getViewport({ scale: 1, rotation: rotate as number });
-      if (width) {
-        pageScale = width / viewport.width;
-      } else if (height) {
-        pageScale = height / viewport.height;
+  useEffect(
+    function setDrawLayerParent() {
+      if (drawLayer) {
+        drawLayer.setParent(pageElement.current);
       }
-    }
+    },
+    [drawLayer],
+  );
 
-    return scaleWithDefault * pageScale;
-  }, [height, page, rotate, scaleProps, width]);
-
-  function hook() {
-    return () => {
-      if (!isProvided(pageIndex)) {
-        // Impossible, but TypeScript doesn't know that
-        return;
+  // TODO: Move this to document/viewer with correct value
+  // TOOD: Track Move tracking of pagenubmer to single source of truth. currently it is done in both state and viewer
+  useEffect(
+    function updateAnnotationEditorUiManagerPage() {
+      if (annotationEditorUiManager) {
+        annotationEditorUiManager.onPageChanging({ pageNumber });
       }
-
-      if (_enableRegisterUnregisterPage && unregisterPage) {
-        unregisterPage(pageIndex);
-      }
-    };
-  }
-
-  useEffect(hook, [_enableRegisterUnregisterPage, pdf, pageIndex, unregisterPage]);
+    },
+    [annotationEditorUiManager, pageNumber],
+  );
 
   /**
    * Called when a page is loaded successfully
@@ -435,7 +420,7 @@ const Page: React.FC<PageProps> = function Page(props) {
         return;
       }
 
-      registerPage(pageIndex, pageElement.current);
+      registerPage(pageIndex, pageElement.current, pageState?.value);
     }
   }
 
@@ -500,15 +485,22 @@ const Page: React.FC<PageProps> = function Page(props) {
     [page, scale],
   );
 
+  const onRenderAnnotationLayerSuccess = (annotationLayer: any) => {
+    setAnnotationLayer(annotationLayer);
+    onRenderAnnotationLayerSuccessProps?.(annotationLayer);
+  };
+
   const childContext = useMemo(
     () =>
       // Technically there cannot be page without pageIndex, pageNumber, rotate and scale, but TypeScript doesn't know that
       page && isProvided(pageIndex) && pageNumber && isProvided(rotate) && isProvided(scale)
         ? {
             _className,
+            annotationLayer,
             canvasBackground,
             customTextRenderer,
             devicePixelRatio,
+            drawLayer,
             onGetAnnotationsError: onGetAnnotationsErrorProps,
             onGetAnnotationsSuccess: onGetAnnotationsSuccessProps,
             onGetStructTreeError: onGetStructTreeErrorProps,
@@ -516,7 +508,7 @@ const Page: React.FC<PageProps> = function Page(props) {
             onGetTextError: onGetTextErrorProps,
             onGetTextSuccess: onGetTextSuccessProps,
             onRenderAnnotationLayerError: onRenderAnnotationLayerErrorProps,
-            onRenderAnnotationLayerSuccess: onRenderAnnotationLayerSuccessProps,
+            onRenderAnnotationLayerSuccess,
             onRenderError: onRenderErrorProps,
             onRenderSuccess: onRenderSuccessProps,
             onRenderTextLayerError: onRenderTextLayerErrorProps,
@@ -528,10 +520,12 @@ const Page: React.FC<PageProps> = function Page(props) {
             renderTextLayer: renderTextLayerProps,
             rotate,
             scale,
+            textLayerRef,
           }
         : null,
     [
       _className,
+      annotationLayer,
       canvasBackground,
       customTextRenderer,
       devicePixelRatio,
@@ -609,12 +603,33 @@ const Page: React.FC<PageProps> = function Page(props) {
     return <AnnotationLayer key={`${pageKey}_annotations`} />;
   }
 
+  function isValidAnnotationEditorMode(mode: number) {
+    return (
+      Object.values(pdfjs.AnnotationEditorType).includes(mode) &&
+      mode !== pdfjs.AnnotationEditorType.DISABLE
+    );
+  }
+
+  function renderAnnotationEditorLayer() {
+    const mode = annotationEditorMode;
+    if (!isValidAnnotationEditorMode(mode)) {
+      return null;
+    }
+
+    if (!annotationLayerRendered) {
+      return null;
+    }
+
+    return <AnnotationEditorLayer />;
+  }
+
   function renderChildren() {
     return (
       <PageContext.Provider value={childContext}>
         {renderMainLayer()}
         {renderTextLayer()}
         {renderAnnotationLayer()}
+        {renderAnnotationEditorLayer()}
         {children}
       </PageContext.Provider>
     );
@@ -644,11 +659,13 @@ const Page: React.FC<PageProps> = function Page(props) {
       data-page-number={pageNumber}
       ref={mergeRefs(inputRef, pageElement)}
       style={{
-        ['--scale-factor' as string]: `${scale}`,
+        ['--scale-factor' as string]: `${(pdfjsInternalScale || 1) * pdfjs.PixelsPerInch.PDF_TO_CSS_UNITS}`,
         backgroundColor: canvasBackground || 'white',
         position: 'relative',
-        // minWidth: 'min-content',
-        // minHeight: 'min-content',
+        minWidth: 'min-content',
+        minHeight: 'min-content',
+        maxWidth: 'min-content',
+        maxHeight: 'min-content',
       }}
       {...eventProps}
     >
@@ -691,7 +708,7 @@ Page.propTypes = {
   renderTextLayer: PropTypes.bool,
   rotate: isRotate,
   scale: PropTypes.number,
-  width: PropTypes.number,
+  pdfjsInternalScale: PropTypes.number,
 };
 
 export default Page;

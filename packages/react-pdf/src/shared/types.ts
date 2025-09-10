@@ -3,7 +3,7 @@ import type {
   PDFDocumentProxy,
   PDFPageProxy,
   PasswordResponses,
-} from 'pdfjs-dist';
+} from '@commutatus/pdfjs-dist';
 import type {
   BinaryData,
   DocumentInitParameters,
@@ -11,9 +11,11 @@ import type {
   StructTreeNode,
   TextContent,
   TextItem,
-} from 'pdfjs-dist/types/src/display/api.js';
-import type { AnnotationLayerParameters } from 'pdfjs-dist/types/src/display/annotation_layer.js';
+} from '@commutatus/pdfjs-dist/types/src/display/api.js';
+import type { AnnotationLayerParameters } from '@commutatus/pdfjs-dist/types/src/display/annotation_layer.js';
 import type LinkService from '../LinkService.js';
+import type React from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 
 type NullableObject<T extends object> = { [P in keyof T]: T[P] | null };
 
@@ -47,7 +49,12 @@ export type OnLoadProgressArgs = {
   total: number;
 };
 
-export type RegisterPage = (pageIndex: number, ref: HTMLDivElement) => void;
+export type RegisterPage = (
+  pageIndex: number,
+  ref: HTMLDivElement,
+  pageProxy?: PDFPageProxy | false,
+) => void;
+export type RegisterAnnotationEditorLayer = (pageIndex: number, ref: HTMLDivElement) => void;
 
 export type RenderMode = 'canvas' | 'custom' | 'none' | 'svg';
 
@@ -55,14 +62,13 @@ export type ScrollPageIntoViewArgs = {
   dest?: ResolvedDest;
   pageIndex?: number;
   pageNumber: number;
+  topOffset?: number;
 };
 
 export type Source =
   | { data: BinaryData | undefined }
   | { range: PDFDataRangeTransport }
   | { url: string };
-
-export type UnregisterPage = (pageIndex: number) => void;
 
 /* Complex types */
 export type CustomRenderer = React.FunctionComponent | React.ComponentClass;
@@ -110,7 +116,7 @@ export type OnPasswordCallback = (password: string | null) => void;
 
 export type OnRenderAnnotationLayerError = (error: unknown) => void;
 
-export type OnRenderAnnotationLayerSuccess = () => void;
+export type OnRenderAnnotationLayerSuccess = (annotationLayer: true) => void;
 
 export type OnRenderError = OnError;
 
@@ -126,21 +132,29 @@ export type Options = NullableObject<Omit<DocumentInitParameters, KeyOfUnion<Sou
 
 /* Context types */
 export type DocumentContextType = {
+  annotationEditorUiManager: any;
+  annotationEditorMode: any;
+  eventBus: any;
+  findController: any;
   imageResourcesPath?: ImageResourcesPath;
   linkService: LinkService;
   onItemClick?: (args: OnItemClickArgs) => void;
   pdf?: PDFDocumentProxy | false;
   registerPage: RegisterPage;
+  registerAnnotationEditorLayer: RegisterAnnotationEditorLayer;
   renderMode?: RenderMode;
   rotate?: number | null;
-  unregisterPage: UnregisterPage;
+  registerDivForGlobalSelectionListener: (div: HTMLDivElement, end: HTMLDivElement) => void;
+  unregisterDivForGlobalSelectionListener: (div: HTMLDivElement) => void;
 } | null;
 
 export type PageContextType = {
   _className?: string;
+  annotationLayer: React.Ref<HTMLDivElement>;
   canvasBackground?: string;
   customTextRenderer?: CustomTextRenderer;
   devicePixelRatio?: number;
+  drawLayer: any;
   onGetAnnotationsError?: OnGetAnnotationsError;
   onGetAnnotationsSuccess?: OnGetAnnotationsSuccess;
   onGetStructTreeError?: OnGetStructTreeError;
@@ -160,6 +174,7 @@ export type PageContextType = {
   renderTextLayer: boolean;
   rotate: number;
   scale: number;
+  textLayerRef: React.Ref<HTMLDivElement>;
 } | null;
 
 export type OutlineContextType = {
@@ -170,3 +185,10 @@ export type StructTreeNodeWithExtraAttributes = StructTreeNode & {
   alt?: string;
   lang?: string;
 };
+
+export type HighlightEditorColorType = {
+  name: string;
+  hex: string;
+};
+
+export type HighlightEditorColorsType = HighlightEditorColorType[];

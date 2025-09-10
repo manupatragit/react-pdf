@@ -81,7 +81,7 @@ export default function PageSVG() {
 
     cancellable.promise
       .then((operatorList) => {
-        const svgGfx = new pdfjs.SVGGraphics(page.commonObjs, page.objs);
+        const svgGfx = new (pdfjs as any).SVGGraphics(page.commonObjs, page.objs);
 
         svgGfx
           .getSVG(operatorList, viewport)
@@ -93,7 +93,7 @@ export default function PageSVG() {
 
             svgDispatch({ type: 'RESOLVE', value: nextSvg });
           })
-          .catch((error) => {
+          .catch((error: any) => {
             svgDispatch({ type: 'REJECT', error });
           });
       })

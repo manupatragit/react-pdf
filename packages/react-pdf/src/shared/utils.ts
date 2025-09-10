@@ -1,7 +1,7 @@
 import invariant from 'tiny-invariant';
 import warning from 'warning';
 
-import type { PDFPageProxy } from 'pdfjs-dist';
+import type { PDFPageProxy } from '@commutatus/pdfjs-dist';
 import type { PageCallback } from './types.js';
 
 /**
@@ -178,3 +178,12 @@ export function loadFromFile(file: Blob): Promise<ArrayBuffer> {
     reader.readAsArrayBuffer(file);
   });
 }
+
+export const isPageInVew = (viewPosition: number, page: any) => {
+  if (!page) {
+    return false;
+  }
+
+  const pageBottom = page.offsetTop + page.clientTop + page.clientHeight;
+  return pageBottom > viewPosition;
+};

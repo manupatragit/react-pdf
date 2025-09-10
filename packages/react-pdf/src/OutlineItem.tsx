@@ -7,8 +7,8 @@ import useCachedValue from './shared/hooks/useCachedValue.js';
 import useDocumentContext from './shared/hooks/useDocumentContext.js';
 import useOutlineContext from './shared/hooks/useOutlineContext.js';
 
-import type { PDFDocumentProxy } from 'pdfjs-dist';
-import type { RefProxy } from 'pdfjs-dist/types/src/display/api.js';
+import type { PDFDocumentProxy } from '@commutatus/pdfjs-dist';
+import type { RefProxy } from '@commutatus/pdfjs-dist/types/src/display/api.js';
 
 type PDFOutline = Awaited<ReturnType<PDFDocumentProxy['getOutline']>>;
 

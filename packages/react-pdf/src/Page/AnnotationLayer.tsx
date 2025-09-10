@@ -12,7 +12,7 @@ import usePageContext from '../shared/hooks/usePageContext.js';
 import useResolver from '../shared/hooks/useResolver.js';
 import { cancelRunningTask } from '../shared/utils.js';
 
-import type { IDownloadManager } from 'pdfjs-dist/types/web/interfaces.js';
+import type { IDownloadManager } from '@commutatus/pdfjs-dist/types/web/interfaces.js';
 import type { Annotations } from '../shared/types.js';
 
 export default function AnnotationLayer() {
@@ -126,9 +126,9 @@ export default function AnnotationLayer() {
     [annotations],
   );
 
-  function onRenderSuccess() {
+  function onRenderSuccess(annotationLayer: any) {
     if (onRenderAnnotationLayerSuccessProps) {
-      onRenderAnnotationLayerSuccessProps();
+      onRenderAnnotationLayerSuccessProps(annotationLayer);
     }
   }
 
@@ -150,7 +150,7 @@ export default function AnnotationLayer() {
       return;
     }
 
-    const { current: layer } = layerElement;
+    const { current: layer } = layerElement as any;
 
     if (!layer) {
       return;
@@ -162,7 +162,6 @@ export default function AnnotationLayer() {
       accessibilityManager: null, // TODO: Implement this
       annotationCanvasMap: null, // TODO: Implement this
       div: layer,
-      l10n: null, // TODO: Implement this
       page,
       viewport: clonedViewport,
     };
@@ -183,10 +182,11 @@ export default function AnnotationLayer() {
     layer.innerHTML = '';
 
     try {
-      new pdfjs.AnnotationLayer(annotationLayerParameters).render(renderParameters);
+      const annotationLayer = new pdfjs.AnnotationLayer(annotationLayerParameters);
+      annotationLayer.render(renderParameters);
 
       // Intentional immediate callback
-      onRenderSuccess();
+      onRenderSuccess(annotationLayer);
     } catch (error) {
       onRenderError(error);
     }

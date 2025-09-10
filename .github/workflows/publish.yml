@@ -1,8 +1,9 @@
 name: Publish
 
 on:
-  release:
-    types: [published]
+  push:
+    branches:
+      - v8
 
 env:
   HUSKY: 0
@@ -39,20 +40,12 @@ jobs:
         run: corepack enable
 
       - name: Install dependencies
-        run: yarn --immutable
+        run: yarn install --no-immutable
 
       - name: Generate archive
         run: yarn pack
 
-      - name: Publish with latest tag
-        if: github.event.release.prelease == false
-        run: npm publish package.tgz --tag latest --provenance
-        working-directory: packages/react-pdf
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
       - name: Publish with next tag
-        if: github.event.release.prelease == true
         run: npm publish package.tgz --tag next --provenance
         working-directory: packages/react-pdf
         env:

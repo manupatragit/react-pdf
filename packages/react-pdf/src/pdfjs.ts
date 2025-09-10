@@ -1,4 +1,5 @@
-import * as pdfjsModule from 'pdfjs-dist';
+//@ts-ignore
+const pdfjsModule = await import('@commutatus/pdfjs-dist/webpack.mjs');
 
 const pdfjs = (
   'default' in pdfjsModule ? pdfjsModule['default'] : pdfjsModule
